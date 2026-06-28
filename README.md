@@ -22,7 +22,9 @@ and which volunteers went.
 - **2025 Dem turnout** — how many people voted in each district.
 - **Canvassing coverage so far** — where the team has already spent its time.
 
-District boundaries are always drawn so you can click them while planning (below).
+**Click any election district** for a popup with: registered Democrats, 2026
+Dem primary turnout + who won and by how much, and 2025 mayoral primary turnout
++ who led. The popup also has an **Add to shift** button for planning (below).
 
 **Map layers** ("Show on the map" checkboxes) — turn these on/off independently:
 
@@ -30,19 +32,24 @@ District boundaries are always drawn so you can click them while planning (below
 - **Neighborhoods** — labeled neighborhood areas for orientation.
 - **Subway stops** — colored by train line (official MTA colors); station names
   appear when you zoom in.
-- **Election Day poll sites** — 🗳 pins, colored by partisan lean; hover for the
-  neighborhood, priority, and how many bodies the site needs.
+- **Priority Election Day poll sites** — 🗳 pins, colored by partisan lean; hover
+  for the neighborhood, priority, and how many bodies the site needs.
+- **Early voting sites** — purple **EV** pins.
 - **Supermarkets** — 🛒 pins for high-foot-traffic canvassing spots.
 
-**A Locations list** (left) you can search and sort to review where the team has
-already canvassed and how long ago.
+## Layout
 
-**A "Plan the week" tab** — plan by **shift and election district**:
+- **Left block — Locations:** the map controls plus a searchable/sortable list of
+  past canvassing sites.
+- **Center — the map.**
+- **Right block — Plan the week:** plan by **shift and election district**.
+
+**Planning a week:**
 
 - Every day has two shifts. **Mon–Fri:** AM 8a–12p, PM 4–8p. **Sat–Sun:** AM
   9a–1p, PM 12–4p.
-- Click a **shift** to select it, then **click election districts on the map** to
-  assign them to that shift. Click a district again to remove it.
+- Click a **shift** (right block) to select it, then **click an election district
+  on the map** and choose **Add to shift** in its popup. Click again to remove.
 - Your plan saves automatically (in the browser); **Print / Save as PDF** or
   **Copy as text** to share it with the team.
 
@@ -82,11 +89,8 @@ Then visit <http://localhost:8765/index.html> in your browser.
 | `neighborhoods.geojson`        | Manhattan neighborhood boundaries                               | NYC Open Data — 2020 Neighborhood Tabulation Areas |
 | `subway_stations.geojson`      | subway stations + train lines                                   | NYC Open Data (via `kevin-brown/nyc-open-geojson`) |
 | `election_day_poll_sites.geojson` | priority Election Day poll sites + lean/priority/bodies        | campaign list (`NY12 Priority Pollsites…csv`), geocoded via NYC GeoSearch |
+| `early_voting_sites.geojson`   | early voting sites                                              | "GOTV Early Voting Map" (Google My Maps), exported as KML |
 | `supermarkets.geojson`         | NY-12 grocery stores / supermarkets                             | campaign list (`NY-12 Grocery Stores…csv`) |
-
-> **Not yet included:** *early voting* poll sites — no data file for them was
-> provided. Drop a CSV (with addresses or coordinates) and this can gain an
-> "Early voting sites" layer the same way.
 
 To refresh the map with newer numbers, replace the relevant file(s) with updated
 exports, keeping the same names and format.

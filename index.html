@@ -10,86 +10,85 @@
 </head>
 <body>
   <div id="app">
-    <aside id="sidebar">
-      <header id="sidebar-header">
+    <!-- ============ LEFT BLOCK: LOCATIONS ============ -->
+    <aside id="panel-left" class="panel">
+      <header class="panel-header">
         <h1>Canvassing Planner</h1>
-        <p id="subtitle">Pick where to send canvassers next week.</p>
-        <nav class="tabs">
-          <button class="tab active" data-tab="locations">Locations</button>
-          <button class="tab" data-tab="plan">Plan the week</button>
-        </nav>
+        <p id="subtitle">Where the team has been &amp; where to go next.</p>
       </header>
 
-      <!-- ============ LOCATIONS TAB ============ -->
-      <section class="tab-panel" id="panel-locations">
-        <div class="summary" id="summary"><!-- filled by app.js --></div>
+      <div class="summary" id="summary"><!-- filled by app.js --></div>
 
-        <div class="controls">
-          <label class="field">
-            <span class="field-label">Color the districts by</span>
-            <select id="shading-mode">
-              <option value="opportunity">Priority for next week</option>
-              <option value="boreslasher">2026 Dem Primary Results</option>
-              <option value="mayor2025">2025 Mayor — Mamdani vs Cuomo</option>
-              <option value="turnout">2025 Dem turnout</option>
-              <option value="coverage">Canvassing coverage so far</option>
-              <option value="none">No shading</option>
-            </select>
-          </label>
+      <div class="controls">
+        <label class="field">
+          <span class="field-label">Color the districts by</span>
+          <select id="shading-mode">
+            <option value="opportunity">Priority for next week</option>
+            <option value="boreslasher">2026 Dem Primary Results</option>
+            <option value="mayor2025">2025 Mayor — Mamdani vs Cuomo</option>
+            <option value="turnout">2025 Dem turnout</option>
+            <option value="coverage">Canvassing coverage so far</option>
+            <option value="none">No shading</option>
+          </select>
+        </label>
 
-          <div class="field">
-            <span class="field-label">Show on the map</span>
-            <div class="layer-toggles">
-              <label class="toggle"><input type="checkbox" id="lyr-sites" checked /> Canvassing sites</label>
-              <label class="toggle"><input type="checkbox" id="lyr-hoods" /> Neighborhoods</label>
-              <label class="toggle"><input type="checkbox" id="lyr-subway" /> Subway stops</label>
-              <label class="toggle"><input type="checkbox" id="lyr-polls" /> Election Day poll sites</label>
-              <label class="toggle"><input type="checkbox" id="lyr-groc" /> Supermarkets</label>
-            </div>
+        <div class="field">
+          <span class="field-label">Show on the map</span>
+          <div class="layer-toggles">
+            <label class="toggle"><input type="checkbox" id="lyr-sites" checked /> Canvassing sites</label>
+            <label class="toggle"><input type="checkbox" id="lyr-hoods" /> Neighborhoods</label>
+            <label class="toggle"><input type="checkbox" id="lyr-subway" /> Subway stops</label>
+            <label class="toggle"><input type="checkbox" id="lyr-polls" /> Priority Election Day poll sites</label>
+            <label class="toggle"><input type="checkbox" id="lyr-early" /> Early voting sites</label>
+            <label class="toggle"><input type="checkbox" id="lyr-groc" /> Supermarkets</label>
           </div>
-
-          <input type="search" id="search" placeholder="Search a past site…" autocomplete="off" />
-          <label class="field inline">
-            <span class="field-label">Sort by</span>
-            <select id="sort">
-              <option value="opportunity">Most worth revisiting</option>
-              <option value="recency">Longest since canvassed</option>
-              <option value="weighted_person_days">Canvassing coverage</option>
-              <option value="raw_person_days">Total person-days</option>
-              <option value="unique_people_count">Unique volunteers</option>
-              <option value="location_aliases">Name (A–Z)</option>
-            </select>
-          </label>
         </div>
 
-        <ul id="location-list" class="location-list"><!-- filled by app.js --></ul>
-      </section>
+        <input type="search" id="search" placeholder="Search a past site…" autocomplete="off" />
+        <label class="field inline">
+          <span class="field-label">Sort by</span>
+          <select id="sort">
+            <option value="opportunity">Most worth revisiting</option>
+            <option value="recency">Longest since canvassed</option>
+            <option value="weighted_person_days">Canvassing coverage</option>
+            <option value="raw_person_days">Total person-days</option>
+            <option value="unique_people_count">Unique volunteers</option>
+            <option value="location_aliases">Name (A–Z)</option>
+          </select>
+        </label>
+      </div>
 
-      <!-- ============ PLAN TAB ============ -->
-      <section class="tab-panel hidden" id="panel-plan">
-        <div class="week-nav">
-          <button id="week-prev" title="Previous week">‹</button>
-          <div class="week-label" id="week-label"></div>
-          <button id="week-next" title="Next week">›</button>
-        </div>
-        <div class="shift-banner" id="shift-banner"></div>
-        <p class="plan-hint">
-          Pick a <strong>shift</strong> below, then <strong>click election districts on the map</strong>
-          to assign them to it. Click a district again to remove it.
-        </p>
-        <div class="plan-days" id="plan-days"><!-- filled by app.js --></div>
-        <div class="plan-actions">
-          <button id="plan-print">🖨 Print / Save PDF</button>
-          <button id="plan-copy">📋 Copy as text</button>
-          <button id="plan-clear" class="danger">Clear this week</button>
-        </div>
-        <div class="plan-copied" id="plan-copied"></div>
-      </section>
-
-      <footer id="sidebar-footer"><span id="count-line"></span></footer>
+      <ul id="location-list" class="location-list"><!-- filled by app.js --></ul>
+      <footer class="panel-footer"><span id="count-line"></span></footer>
     </aside>
 
+    <!-- ============ CENTER: MAP ============ -->
     <main id="map"></main>
+
+    <!-- ============ RIGHT BLOCK: PLAN THE WEEK ============ -->
+    <aside id="panel-right" class="panel">
+      <header class="panel-header">
+        <h2>Plan the week</h2>
+        <p class="panel-sub">Assign election districts to each shift.</p>
+      </header>
+      <div class="week-nav">
+        <button id="week-prev" title="Previous week">‹</button>
+        <div class="week-label" id="week-label"></div>
+        <button id="week-next" title="Next week">›</button>
+      </div>
+      <div class="shift-banner" id="shift-banner"></div>
+      <p class="plan-hint">
+        Pick a <strong>shift</strong> below, then <strong>click an election district on the map</strong>
+        and choose <em>Add to shift</em> in its popup.
+      </p>
+      <div class="plan-days" id="plan-days"><!-- filled by app.js --></div>
+      <div class="plan-actions">
+        <button id="plan-print">🖨 Print / Save PDF</button>
+        <button id="plan-copy">📋 Copy as text</button>
+        <button id="plan-clear" class="danger">Clear this week</button>
+      </div>
+      <div class="plan-copied" id="plan-copied"></div>
+    </aside>
   </div>
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"

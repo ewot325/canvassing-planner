@@ -26,14 +26,27 @@
 
         <div class="controls">
           <label class="field">
-            <span class="field-label">Map shading (districts)</span>
-            <select id="overlay-mode">
+            <span class="field-label">Color the districts by</span>
+            <select id="shading-mode">
               <option value="opportunity">Priority for next week</option>
+              <option value="boreslasher">Our race — Bores vs Lasher</option>
+              <option value="mayor2025">2025 Mayor — Mamdani vs Cuomo</option>
               <option value="turnout">2025 Dem turnout</option>
               <option value="coverage">Canvassing coverage so far</option>
               <option value="none">No shading</option>
             </select>
           </label>
+
+          <div class="field">
+            <span class="field-label">Show on the map</span>
+            <div class="layer-toggles">
+              <label class="toggle"><input type="checkbox" id="lyr-sites" checked /> Canvassing sites</label>
+              <label class="toggle"><input type="checkbox" id="lyr-eds" /> Election-district lines</label>
+              <label class="toggle"><input type="checkbox" id="lyr-hoods" /> Neighborhoods</label>
+              <label class="toggle"><input type="checkbox" id="lyr-subway" /> Subway stations</label>
+            </div>
+          </div>
+
           <input type="search" id="search" placeholder="Search a location…" autocomplete="off" />
           <label class="field inline">
             <span class="field-label">Sort by</span>

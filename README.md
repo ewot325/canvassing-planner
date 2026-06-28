@@ -12,12 +12,22 @@ computer — no login, no internet account, no servers to maintain.
 **bigger dots** were canvassed more. Click any dot to see its dates, person-days,
 and which volunteers went.
 
-**Election-district shading**, switchable with the "Map shading" dropdown:
+**District shading** ("Color the districts by" dropdown) — pick one at a time:
 
 - **Priority for next week** (the default) — the redder a district, the more it's
   a high-turnout area the team has *under*-canvassed. These are your best targets.
+- **Our race — Bores vs Lasher** — who won each election district (green = Bores,
+  gold = Lasher); stronger color = bigger margin.
+- **2025 Mayor — Mamdani vs Cuomo** — who led each district in the mayoral primary.
 - **2025 Dem turnout** — how many people voted in each district.
 - **Canvassing coverage so far** — where the team has already spent its time.
+
+**Map layers** ("Show on the map" checkboxes) — turn these on/off independently:
+
+- **Canvassing sites** (on by default) — the dots.
+- **Election-district lines** — the ED boundaries as outlines.
+- **Neighborhoods** — labeled neighborhood areas for orientation.
+- **Subway stations** — nearby stations with their train lines.
 
 **A Locations list** you can search and sort — including "Longest since
 canvassed" (great for rotating sites) and "Most worth revisiting." Each row shows
@@ -53,18 +63,23 @@ Then visit <http://localhost:8765/index.html> in your browser.
 > just double-click the HTML. The little server above is what lets the map load
 > its data. (Opening `index.html` directly will show an empty map.)
 
-## Updating the data
+## The data files (in `data/`)
 
-The map reads three files in the `data/` folder:
+| file                           | what it is                                                       | where it came from |
+| ------------------------------ | --------------------------------------------------------------- | ------------------ |
+| `locations.json`               | every canvassed site: coordinates, dates, volunteers            | our scheduling tooling |
+| `summary.json`                 | the headline totals shown at the top of the sidebar             | our scheduling tooling |
+| `districts.geojson`            | election-district shapes + 2025 turnout, mayoral results, coverage | our scheduling tooling |
+| `bores_lasher_results.geojson` | Bores vs Lasher vote totals by election district (NY-12 Dem primary, 6/23/2026) | [Atlasizer](https://www.atlasizer.com) (Data Mapper by Competitive Advantage Research) |
+| `neighborhoods.geojson`        | Manhattan neighborhood boundaries                               | NYC Open Data — 2020 Neighborhood Tabulation Areas |
+| `subway_stations.geojson`      | subway stations + train lines                                   | NYC Open Data (via `kevin-brown/nyc-open-geojson`) |
 
-| file                | what it is                                            |
-| ------------------- | ----------------------------------------------------- |
-| `locations.json`    | every canvassed site: coordinates, dates, volunteers  |
-| `summary.json`      | the headline totals shown at the top of the sidebar   |
-| `districts.geojson` | election-district shapes + 2025 turnout (the overlay) |
+To refresh the map with newer numbers, replace the relevant file(s) with updated
+exports, keeping the same names and format.
 
-To refresh the map with newer numbers, replace these three files with updated
-exports (keeping the same names and format).
+> **Note on neighborhoods:** the NYT's "extremely detailed" neighborhood map uses
+> the Times' own proprietary boundaries, which aren't downloadable. This uses NYC's
+> official public neighborhood boundaries instead, which are very similar.
 
 ## Privacy note
 

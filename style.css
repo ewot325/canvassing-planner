@@ -92,6 +92,13 @@ html, body {
 #search::placeholder { color: var(--muted); }
 .field.inline select { flex: 1; }
 
+.layer-toggles { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 10px; }
+.layer-toggles .toggle {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 12px; color: var(--text); cursor: pointer;
+}
+.layer-toggles input { accent-color: var(--accent); }
+
 .adding-banner {
   font-size: 12px;
   color: var(--accent);
@@ -101,6 +108,19 @@ html, body {
   display: none;
 }
 .adding-banner.show { display: block; }
+
+/* richer legend for categorical layers */
+.legend .cat { display: flex; align-items: center; gap: 6px; margin: 2px 0; }
+.legend .cat .box { width: 12px; height: 12px; border-radius: 3px; flex: none; border: 1px solid rgba(0,0,0,0.2); }
+.legend .sub { color: var(--muted); margin-top: 6px; }
+
+/* neighborhood name labels on the map */
+.hood-label {
+  background: transparent; border: none; box-shadow: none;
+  color: #4a3a6b; font-size: 11px; font-weight: 700;
+  text-shadow: 0 0 3px #fff, 0 0 3px #fff, 0 0 3px #fff;
+}
+.hood-label::before { display: none; } /* hide tooltip arrow */
 
 /* ---- location list ---- */
 .location-list { list-style: none; margin: 0; padding: 0; overflow-y: auto; flex: 1; }

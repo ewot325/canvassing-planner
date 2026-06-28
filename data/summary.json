@@ -1,0 +1,335 @@
+{
+  "schedule_files": [
+    "rating_locations/volunteer_locations.xlsx::By Session"
+  ],
+  "marginal_weights": [
+    1.0,
+    0.7
+  ],
+  "distance_half_life_meters": 500.0,
+  "max_influence_meters": 2000.0,
+  "raw_schedule_entries": 217,
+  "usable_schedule_entries": 217,
+  "skipped_schedule_entries": 0,
+  "skipped_entries_due_to_missing_coordinates": 0,
+  "site_days_total": 217,
+  "site_days_in_target_district": 216,
+  "site_days_outside_target_district": 1,
+  "locations_total": 123,
+  "locations_in_target_district": 122,
+  "locations_inside_target_turnout_map": 122,
+  "total_population_in_target_districts": 776906,
+  "adult_population_in_target_districts": 682205,
+  "population_source": "2020 Census PL 94-171 P1/P3",
+  "total_raw_person_days_all_locations": 1496,
+  "total_weighted_person_days_all_locations": 1112.3,
+  "total_raw_person_days_in_target_district": 1494,
+  "total_weighted_person_days_in_target_district": 1110.6,
+  "top_locations_by_weighted_person_days": [
+    {
+      "location_aliases": "StuyTown grounds",
+      "inside_target_turnout_map": true,
+      "elect_dist": 74024,
+      "raw_person_days": 145,
+      "weighted_person_days": 105.7,
+      "weighted_person_days_per_100_ballots": 16.912
+    },
+    {
+      "location_aliases": "97th Street Greenmarket",
+      "inside_target_turnout_map": true,
+      "elect_dist": 69038,
+      "raw_person_days": 116,
+      "weighted_person_days": 85.1,
+      "weighted_person_days_per_100_ballots": 15.7592592593
+    },
+    {
+      "location_aliases": "Just outside of* 79th St Greenmarket",
+      "inside_target_turnout_map": true,
+      "elect_dist": 67017,
+      "raw_person_days": 85,
+      "weighted_person_days": 62.8,
+      "weighted_person_days_per_100_ballots": 9.7213622291
+    },
+    {
+      "location_aliases": "Penn South (Doors)",
+      "inside_target_turnout_map": true,
+      "elect_dist": 75043,
+      "raw_person_days": 55,
+      "weighted_person_days": 40.0,
+      "weighted_person_days_per_100_ballots": 5.5865921788
+    },
+    {
+      "location_aliases": "92NY",
+      "inside_target_turnout_map": true,
+      "elect_dist": 73061,
+      "raw_person_days": 50,
+      "weighted_person_days": 36.2,
+      "weighted_person_days_per_100_ballots": 12.2711864407
+    },
+    {
+      "location_aliases": "68th Street-Hunter College",
+      "inside_target_turnout_map": true,
+      "elect_dist": 73041,
+      "raw_person_days": 49,
+      "weighted_person_days": 36.1,
+      "weighted_person_days_per_100_ballots": 11.28125
+    },
+    {
+      "location_aliases": "Manhattan Plaza",
+      "inside_target_turnout_map": true,
+      "elect_dist": 75053,
+      "raw_person_days": 47,
+      "weighted_person_days": 35.0,
+      "weighted_person_days_per_100_ballots": 5.7947019868
+    },
+    {
+      "location_aliases": "2nd Ave and 46th St.",
+      "inside_target_turnout_map": true,
+      "elect_dist": 73015,
+      "raw_person_days": 43,
+      "weighted_person_days": 30.7,
+      "weighted_person_days_per_100_ballots": 7.3095238095
+    },
+    {
+      "location_aliases": "2nd Ave and 68th St.",
+      "inside_target_turnout_map": true,
+      "elect_dist": 76001,
+      "raw_person_days": 40,
+      "weighted_person_days": 28.6,
+      "weighted_person_days_per_100_ballots": 6.0980810235
+    },
+    {
+      "location_aliases": "Tucker Sq Greenmarket",
+      "inside_target_turnout_map": true,
+      "elect_dist": 67031,
+      "raw_person_days": 34,
+      "weighted_person_days": 25.6,
+      "weighted_person_days_per_100_ballots": 7.6417910448
+    }
+  ],
+  "most_undercovered_election_districts": [
+    {
+      "assembly_district": 69,
+      "election_district": 12,
+      "elect_dist": 69012,
+      "ballots_cast": 803,
+      "weighted_person_days": 0.0,
+      "distance_adjusted_weighted_person_days": 23.209479,
+      "distance_adjusted_weighted_person_days_per_100_ballots": 2.8903460772,
+      "distance_adjusted_coverage_minus_turnout_share": -0.0039700958,
+      "nearest_location_distance_meters": 786.9
+    },
+    {
+      "assembly_district": 69,
+      "election_district": 45,
+      "elect_dist": 69045,
+      "ballots_cast": 868,
+      "weighted_person_days": 0.0,
+      "distance_adjusted_weighted_person_days": 68.100557,
+      "distance_adjusted_weighted_person_days_per_100_ballots": 7.8456862903,
+      "distance_adjusted_coverage_minus_turnout_share": -0.0029899198,
+      "nearest_location_distance_meters": 399.79
+    },
+    {
+      "assembly_district": 69,
+      "election_district": 41,
+      "elect_dist": 69041,
+      "ballots_cast": 753,
+      "weighted_person_days": 0.0,
+      "distance_adjusted_weighted_person_days": 47.899396,
+      "distance_adjusted_weighted_person_days_per_100_ballots": 6.3611415671,
+      "distance_adjusted_coverage_minus_turnout_share": -0.0029320516,
+      "nearest_location_distance_meters": 404.69
+    },
+    {
+      "assembly_district": 67,
+      "election_district": 39,
+      "elect_dist": 67039,
+      "ballots_cast": 849,
+      "weighted_person_days": 0.0,
+      "distance_adjusted_weighted_person_days": 67.417271,
+      "distance_adjusted_weighted_person_days_per_100_ballots": 7.9407857479,
+      "distance_adjusted_coverage_minus_turnout_share": -0.0029000407,
+      "nearest_location_distance_meters": 197.62
+    },
+    {
+      "assembly_district": 69,
+      "election_district": 39,
+      "elect_dist": 69039,
+      "ballots_cast": 676,
+      "weighted_person_days": 0.0,
+      "distance_adjusted_weighted_person_days": 37.405229,
+      "distance_adjusted_weighted_person_days_per_100_ballots": 5.5333178994,
+      "distance_adjusted_coverage_minus_turnout_share": -0.002801563,
+      "nearest_location_distance_meters": 496.41
+    },
+    {
+      "assembly_district": 67,
+      "election_district": 44,
+      "elect_dist": 67044,
+      "ballots_cast": 760,
+      "weighted_person_days": 0.0,
+      "distance_adjusted_weighted_person_days": 56.464319,
+      "distance_adjusted_weighted_person_days_per_100_ballots": 7.4295156579,
+      "distance_adjusted_coverage_minus_turnout_share": -0.0027136104,
+      "nearest_location_distance_meters": 320.14
+    },
+    {
+      "assembly_district": 74,
+      "election_district": 17,
+      "elect_dist": 74017,
+      "ballots_cast": 705,
+      "weighted_person_days": 0.0,
+      "distance_adjusted_weighted_person_days": 48.976822,
+      "distance_adjusted_weighted_person_days_per_100_ballots": 6.9470669504,
+      "distance_adjusted_coverage_minus_turnout_share": -0.002620152,
+      "nearest_location_distance_meters": 676.26
+    },
+    {
+      "assembly_district": 67,
+      "election_district": 38,
+      "elect_dist": 67038,
+      "ballots_cast": 789,
+      "weighted_person_days": 0.0,
+      "distance_adjusted_weighted_person_days": 71.112233,
+      "distance_adjusted_weighted_person_days_per_100_ballots": 9.0129572877,
+      "distance_adjusted_coverage_minus_turnout_share": -0.0024391108,
+      "nearest_location_distance_meters": 166.22
+    },
+    {
+      "assembly_district": 67,
+      "election_district": 42,
+      "elect_dist": 67042,
+      "ballots_cast": 731,
+      "weighted_person_days": 0.0,
+      "distance_adjusted_weighted_person_days": 60.506761,
+      "distance_adjusted_weighted_person_days_per_100_ballots": 8.2772586867,
+      "distance_adjusted_coverage_minus_turnout_share": -0.0024225453,
+      "nearest_location_distance_meters": 346.0
+    },
+    {
+      "assembly_district": 74,
+      "election_district": 18,
+      "elect_dist": 74018,
+      "ballots_cast": 766,
+      "weighted_person_days": 0.0,
+      "distance_adjusted_weighted_person_days": 72.679392,
+      "distance_adjusted_weighted_person_days_per_100_ballots": 9.4881712794,
+      "distance_adjusted_coverage_minus_turnout_share": -0.0022578592,
+      "nearest_location_distance_meters": 387.23
+    }
+  ],
+  "most_overcovered_election_districts": [
+    {
+      "assembly_district": 68,
+      "election_district": 76,
+      "elect_dist": 68076,
+      "ballots_cast": 14,
+      "weighted_person_days": 0.0,
+      "distance_adjusted_weighted_person_days": 88.796396,
+      "distance_adjusted_weighted_person_days_per_100_ballots": 634.2599714286,
+      "distance_adjusted_coverage_minus_turnout_share": 0.0026054912,
+      "nearest_location_distance_meters": 86.12
+    },
+    {
+      "assembly_district": 66,
+      "election_district": 74,
+      "elect_dist": 66074,
+      "ballots_cast": 70,
+      "weighted_person_days": 0.0,
+      "distance_adjusted_weighted_person_days": 91.915432,
+      "distance_adjusted_weighted_person_days_per_100_ballots": 131.30776,
+      "distance_adjusted_coverage_minus_turnout_share": 0.0023740257,
+      "nearest_location_distance_meters": 226.38
+    },
+    {
+      "assembly_district": 67,
+      "election_district": 6,
+      "elect_dist": 67006,
+      "ballots_cast": 153,
+      "weighted_person_days": 0.0,
+      "distance_adjusted_weighted_person_days": 106.671739,
+      "distance_adjusted_weighted_person_days_per_100_ballots": 69.7200908497,
+      "distance_adjusted_coverage_minus_turnout_share": 0.002337596,
+      "nearest_location_distance_meters": 108.1
+    },
+    {
+      "assembly_district": 76,
+      "election_district": 2,
+      "elect_dist": 76002,
+      "ballots_cast": 307,
+      "weighted_person_days": 0.0,
+      "distance_adjusted_weighted_person_days": 133.374791,
+      "distance_adjusted_weighted_person_days_per_100_ballots": 43.444557329,
+      "distance_adjusted_coverage_minus_turnout_share": 0.0022495443,
+      "nearest_location_distance_meters": 139.6
+    },
+    {
+      "assembly_district": 73,
+      "election_district": 41,
+      "elect_dist": 73041,
+      "ballots_cast": 320,
+      "weighted_person_days": 36.1,
+      "distance_adjusted_weighted_person_days": 134.901167,
+      "distance_adjusted_weighted_person_days_per_100_ballots": 42.1566146875,
+      "distance_adjusted_coverage_minus_turnout_share": 0.002220089,
+      "nearest_location_distance_meters": 105.46
+    },
+    {
+      "assembly_district": 69,
+      "election_district": 16,
+      "elect_dist": 69016,
+      "ballots_cast": 248,
+      "weighted_person_days": 0.0,
+      "distance_adjusted_weighted_person_days": 118.154481,
+      "distance_adjusted_weighted_person_days_per_100_ballots": 47.6429358871,
+      "distance_adjusted_coverage_minus_turnout_share": 0.0021322848,
+      "nearest_location_distance_meters": 187.13
+    },
+    {
+      "assembly_district": 73,
+      "election_district": 61,
+      "elect_dist": 73061,
+      "ballots_cast": 295,
+      "weighted_person_days": 43.8,
+      "distance_adjusted_weighted_person_days": 125.313069,
+      "distance_adjusted_weighted_person_days_per_100_ballots": 42.4790064407,
+      "distance_adjusted_coverage_minus_turnout_share": 0.0020754232,
+      "nearest_location_distance_meters": 72.59
+    },
+    {
+      "assembly_district": 69,
+      "election_district": 55,
+      "elect_dist": 69055,
+      "ballots_cast": 268,
+      "weighted_person_days": 0.0,
+      "distance_adjusted_weighted_person_days": 119.741193,
+      "distance_adjusted_weighted_person_days_per_100_ballots": 44.6795496269,
+      "distance_adjusted_coverage_minus_turnout_share": 0.0020639245,
+      "nearest_location_distance_meters": 146.45
+    },
+    {
+      "assembly_district": 67,
+      "election_district": 46,
+      "elect_dist": 67046,
+      "ballots_cast": 244,
+      "weighted_person_days": 0.0,
+      "distance_adjusted_weighted_person_days": 114.616564,
+      "distance_adjusted_weighted_person_days_per_100_ballots": 46.9740016393,
+      "distance_adjusted_coverage_minus_turnout_share": 0.0020485033,
+      "nearest_location_distance_meters": 95.58
+    },
+    {
+      "assembly_district": 69,
+      "election_district": 64,
+      "elect_dist": 69064,
+      "ballots_cast": 237,
+      "weighted_person_days": 0.0,
+      "distance_adjusted_weighted_person_days": 111.78525,
+      "distance_adjusted_weighted_person_days_per_100_ballots": 47.1667721519,
+      "distance_adjusted_coverage_minus_turnout_share": 0.0020035594,
+      "nearest_location_distance_meters": 105.55
+    }
+  ],
+  "generated_at": "2026-06-28T02:52:08.307908+00:00"
+}

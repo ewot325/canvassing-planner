@@ -1,19 +1,32 @@
-# Canvassing Locations Map
+# Canvassing Planner
 
-A small, standalone website that shows every place the team has canvassed on an
-interactive map. It runs entirely on your own computer — no login, no internet
-account, no servers to maintain.
+A small, standalone website to help the organizing director **decide where to
+send canvassers next week**. It shows every place the team has canvassed on an
+interactive map, highlights where the biggest opportunities are, and lets you
+build a day-by-day plan for the upcoming week. It runs entirely on your own
+computer — no login, no internet account, no servers to maintain.
 
 ## What you get
 
-- A **map** of every past canvassing location. Each dot is one spot.
-  - **Bigger, darker dots** = places that were canvassed more (more repeat
-    visits and more volunteers).
-- A **sidebar list** you can search and sort.
-- **Click any dot or list item** to see the dates it was active, how many
-  person-days were spent there, and which volunteers went.
-- An optional checkbox to **shade the election districts** by how many people
-  voted in the 2025 Democratic primary, so you can see coverage vs. turnout.
+**A map (light mode)** of every past canvassing location. Each dot is one spot;
+**bigger dots** were canvassed more. Click any dot to see its dates, person-days,
+and which volunteers went.
+
+**Election-district shading**, switchable with the "Map shading" dropdown:
+
+- **Priority for next week** (the default) — the redder a district, the more it's
+  a high-turnout area the team has *under*-canvassed. These are your best targets.
+- **2025 Dem turnout** — how many people voted in each district.
+- **Canvassing coverage so far** — where the team has already spent its time.
+
+**A Locations list** you can search and sort — including "Longest since
+canvassed" (great for rotating sites) and "Most worth revisiting." Each row shows
+how long it's been since that spot was last canvassed.
+
+**A "Plan the week" tab** — pick the upcoming week, click a day, then hit
+**+ Add** on any location to drop it onto that day. Your plan saves automatically
+(in the browser) and you can **Print / Save as PDF** or **Copy as text** to share
+it with the team.
 
 ## How to open it (the easy way)
 

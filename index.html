@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Past Canvassing Locations — Map</title>
+  <title>Canvassing Planner — Locations Map</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
         integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
   <link rel="stylesheet" href="style.css" />
@@ -12,39 +12,67 @@
   <div id="app">
     <aside id="sidebar">
       <header id="sidebar-header">
-        <h1>Past Canvassing Locations</h1>
-        <p id="subtitle">Every site the team has canvassed.</p>
+        <h1>Canvassing Planner</h1>
+        <p id="subtitle">Pick where to send canvassers next week.</p>
+        <nav class="tabs">
+          <button class="tab active" data-tab="locations">Locations</button>
+          <button class="tab" data-tab="plan">Plan the week</button>
+        </nav>
       </header>
 
-      <section id="summary" class="summary">
-        <!-- filled by app.js -->
+      <!-- ============ LOCATIONS TAB ============ -->
+      <section class="tab-panel" id="panel-locations">
+        <div class="summary" id="summary"><!-- filled by app.js --></div>
+
+        <div class="controls">
+          <label class="field">
+            <span class="field-label">Map shading (districts)</span>
+            <select id="overlay-mode">
+              <option value="opportunity">Priority for next week</option>
+              <option value="turnout">2025 Dem turnout</option>
+              <option value="coverage">Canvassing coverage so far</option>
+              <option value="none">No shading</option>
+            </select>
+          </label>
+          <input type="search" id="search" placeholder="Search a location…" autocomplete="off" />
+          <label class="field inline">
+            <span class="field-label">Sort by</span>
+            <select id="sort">
+              <option value="opportunity">Most worth revisiting</option>
+              <option value="recency">Longest since canvassed</option>
+              <option value="weighted_person_days">Canvassing coverage</option>
+              <option value="raw_person_days">Total person-days</option>
+              <option value="unique_people_count">Unique volunteers</option>
+              <option value="location_aliases">Name (A–Z)</option>
+            </select>
+          </label>
+          <div class="adding-banner" id="adding-banner"></div>
+        </div>
+
+        <ul id="location-list" class="location-list"><!-- filled by app.js --></ul>
       </section>
 
-      <div class="controls">
-        <input type="search" id="search" placeholder="Search a location…" autocomplete="off" />
-        <label class="sort-row">
-          Sort by
-          <select id="sort">
-            <option value="weighted_person_days">Canvassing coverage</option>
-            <option value="raw_person_days">Total person-days</option>
-            <option value="unique_people_count">Unique volunteers</option>
-            <option value="days_active">Days active</option>
-            <option value="location_aliases">Name (A–Z)</option>
-          </select>
-        </label>
-        <label class="toggle-row">
-          <input type="checkbox" id="toggle-districts" />
-          Shade districts by 2025 Dem turnout
-        </label>
-      </div>
+      <!-- ============ PLAN TAB ============ -->
+      <section class="tab-panel hidden" id="panel-plan">
+        <div class="week-nav">
+          <button id="week-prev" title="Previous week">‹</button>
+          <div class="week-label" id="week-label"></div>
+          <button id="week-next" title="Next week">›</button>
+        </div>
+        <p class="plan-hint">
+          Click a day to select it, then use <strong>+ Add</strong> on any location
+          (in the Locations tab or a map popup) to drop it onto that day.
+        </p>
+        <div class="plan-days" id="plan-days"><!-- filled by app.js --></div>
+        <div class="plan-actions">
+          <button id="plan-print">🖨 Print / Save PDF</button>
+          <button id="plan-copy">📋 Copy as text</button>
+          <button id="plan-clear" class="danger">Clear this week</button>
+        </div>
+        <div class="plan-copied" id="plan-copied"></div>
+      </section>
 
-      <ul id="location-list" class="location-list">
-        <!-- filled by app.js -->
-      </ul>
-
-      <footer id="sidebar-footer">
-        <span id="count-line"></span>
-      </footer>
+      <footer id="sidebar-footer"><span id="count-line"></span></footer>
     </aside>
 
     <main id="map"></main>

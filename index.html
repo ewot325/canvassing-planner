@@ -29,7 +29,7 @@
             <span class="field-label">Color the districts by</span>
             <select id="shading-mode">
               <option value="opportunity">Priority for next week</option>
-              <option value="boreslasher">Our race — Bores vs Lasher</option>
+              <option value="boreslasher">2026 Dem Primary Results</option>
               <option value="mayor2025">2025 Mayor — Mamdani vs Cuomo</option>
               <option value="turnout">2025 Dem turnout</option>
               <option value="coverage">Canvassing coverage so far</option>
@@ -41,13 +41,14 @@
             <span class="field-label">Show on the map</span>
             <div class="layer-toggles">
               <label class="toggle"><input type="checkbox" id="lyr-sites" checked /> Canvassing sites</label>
-              <label class="toggle"><input type="checkbox" id="lyr-eds" /> Election-district lines</label>
               <label class="toggle"><input type="checkbox" id="lyr-hoods" /> Neighborhoods</label>
-              <label class="toggle"><input type="checkbox" id="lyr-subway" /> Subway stations</label>
+              <label class="toggle"><input type="checkbox" id="lyr-subway" /> Subway stops</label>
+              <label class="toggle"><input type="checkbox" id="lyr-polls" /> Election Day poll sites</label>
+              <label class="toggle"><input type="checkbox" id="lyr-groc" /> Supermarkets</label>
             </div>
           </div>
 
-          <input type="search" id="search" placeholder="Search a location…" autocomplete="off" />
+          <input type="search" id="search" placeholder="Search a past site…" autocomplete="off" />
           <label class="field inline">
             <span class="field-label">Sort by</span>
             <select id="sort">
@@ -59,7 +60,6 @@
               <option value="location_aliases">Name (A–Z)</option>
             </select>
           </label>
-          <div class="adding-banner" id="adding-banner"></div>
         </div>
 
         <ul id="location-list" class="location-list"><!-- filled by app.js --></ul>
@@ -72,9 +72,10 @@
           <div class="week-label" id="week-label"></div>
           <button id="week-next" title="Next week">›</button>
         </div>
+        <div class="shift-banner" id="shift-banner"></div>
         <p class="plan-hint">
-          Click a day to select it, then use <strong>+ Add</strong> on any location
-          (in the Locations tab or a map popup) to drop it onto that day.
+          Pick a <strong>shift</strong> below, then <strong>click election districts on the map</strong>
+          to assign them to it. Click a district again to remove it.
         </p>
         <div class="plan-days" id="plan-days"><!-- filled by app.js --></div>
         <div class="plan-actions">

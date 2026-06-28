@@ -16,27 +16,35 @@ and which volunteers went.
 
 - **Priority for next week** (the default) — the redder a district, the more it's
   a high-turnout area the team has *under*-canvassed. These are your best targets.
-- **Our race — Bores vs Lasher** — who won each election district (green = Bores,
+- **2026 Dem Primary Results** — who won each election district (green = Bores,
   gold = Lasher); stronger color = bigger margin.
 - **2025 Mayor — Mamdani vs Cuomo** — who led each district in the mayoral primary.
 - **2025 Dem turnout** — how many people voted in each district.
 - **Canvassing coverage so far** — where the team has already spent its time.
 
+District boundaries are always drawn so you can click them while planning (below).
+
 **Map layers** ("Show on the map" checkboxes) — turn these on/off independently:
 
 - **Canvassing sites** (on by default) — the dots.
-- **Election-district lines** — the ED boundaries as outlines.
 - **Neighborhoods** — labeled neighborhood areas for orientation.
-- **Subway stations** — nearby stations with their train lines.
+- **Subway stops** — colored by train line (official MTA colors); station names
+  appear when you zoom in.
+- **Election Day poll sites** — 🗳 pins, colored by partisan lean; hover for the
+  neighborhood, priority, and how many bodies the site needs.
+- **Supermarkets** — 🛒 pins for high-foot-traffic canvassing spots.
 
-**A Locations list** you can search and sort — including "Longest since
-canvassed" (great for rotating sites) and "Most worth revisiting." Each row shows
-how long it's been since that spot was last canvassed.
+**A Locations list** (left) you can search and sort to review where the team has
+already canvassed and how long ago.
 
-**A "Plan the week" tab** — pick the upcoming week, click a day, then hit
-**+ Add** on any location to drop it onto that day. Your plan saves automatically
-(in the browser) and you can **Print / Save as PDF** or **Copy as text** to share
-it with the team.
+**A "Plan the week" tab** — plan by **shift and election district**:
+
+- Every day has two shifts. **Mon–Fri:** AM 8a–12p, PM 4–8p. **Sat–Sun:** AM
+  9a–1p, PM 12–4p.
+- Click a **shift** to select it, then **click election districts on the map** to
+  assign them to that shift. Click a district again to remove it.
+- Your plan saves automatically (in the browser); **Print / Save as PDF** or
+  **Copy as text** to share it with the team.
 
 ## How to open it (the easy way)
 
@@ -73,6 +81,12 @@ Then visit <http://localhost:8765/index.html> in your browser.
 | `bores_lasher_results.geojson` | Bores vs Lasher vote totals by election district (NY-12 Dem primary, 6/23/2026) | [Atlasizer](https://www.atlasizer.com) (Data Mapper by Competitive Advantage Research) |
 | `neighborhoods.geojson`        | Manhattan neighborhood boundaries                               | NYC Open Data — 2020 Neighborhood Tabulation Areas |
 | `subway_stations.geojson`      | subway stations + train lines                                   | NYC Open Data (via `kevin-brown/nyc-open-geojson`) |
+| `election_day_poll_sites.geojson` | priority Election Day poll sites + lean/priority/bodies        | campaign list (`NY12 Priority Pollsites…csv`), geocoded via NYC GeoSearch |
+| `supermarkets.geojson`         | NY-12 grocery stores / supermarkets                             | campaign list (`NY-12 Grocery Stores…csv`) |
+
+> **Not yet included:** *early voting* poll sites — no data file for them was
+> provided. Drop a CSV (with addresses or coordinates) and this can gain an
+> "Early voting sites" layer the same way.
 
 To refresh the map with newer numbers, replace the relevant file(s) with updated
 exports, keeping the same names and format.

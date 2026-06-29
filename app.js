@@ -4,7 +4,7 @@
 (function () {
   "use strict";
 
-  var DV = "?v=10"; // cache-buster for data files (bump when data changes)
+  var DV = "?v=11"; // cache-buster for data files (bump when data changes)
   var DATA = {
     districts: "data/districts.geojson",
     boreslasher: "data/bores_lasher_results.geojson",
@@ -365,8 +365,10 @@
   // ====================================================================
   function nextMonday() { var day = TODAY.getDay(), delta = ((8 - day) % 7) || 7; return addDays(TODAY, delta); }
   function weekDays() { var out = []; for (var i = 0; i < 7; i++) out.push(addDays(state.weekStart, i)); return out; }
-  // Aggregated fellow counts for the planned week, bridged (counts only, no PII)
-  // from the scheduling project's Supabase via export_fellow_availability.py.
+  // Aggregated assigned-fellow counts for the planned week, bridged (counts
+  // only, no PII) from the scheduling project's Supabase via
+  // export_fellow_availability.py. Reflects who is actually assigned to each
+  // shift (optimizer schedule + hand edits), not just who is available.
   function weekAvail() {
     if (!state.avail || !state.avail.weeks) return null;
     return state.avail.weeks[isoOf(state.weekStart)] || null;
@@ -378,8 +380,8 @@
   }
   function fellowBadge(date, shift) {
     var n = fellowCount(date, shift);
-    if (n === null) return ""; // no signup data for this week yet
-    return '<span class="sh-fellows' + (n ? "" : " zero") + '" title="Volunteers available for this shift (from sign-ups)">' +
+    if (n === null) return ""; // no assignment data for this week yet
+    return '<span class="sh-fellows' + (n ? "" : " zero") + '" title="Volunteers assigned to this shift">' +
       "👥 " + n + "</span>";
   }
   function loadAvailability() {

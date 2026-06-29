@@ -1,25 +1,15 @@
 {
-  "generated_at": "2026-06-29T04:53:44Z",
+  "generated_at": "2026-06-29T05:14:31Z",
   "note": "Aggregated counts only -- no volunteer names or personal info.",
+  "basis": "assigned",
   "weeks": {
     "2026-06-29": {
       "status": "open",
-      "submissions": 5,
+      "assigned_total": 3,
       "shift_counts": {
-        "fri_inperson_pm": 1,
-        "mon_inperson_am": 3,
-        "mon_phonebank": 1,
-        "sat_inperson_am": 2,
-        "sat_inperson_pm": 3,
-        "thu_inperson_am": 1,
-        "thu_inperson_pm": 1,
-        "thu_phonebank": 1,
-        "tue_inperson_am": 2,
-        "tue_inperson_pm": 3,
-        "tue_phonebank": 2,
-        "wed_inperson_am": 3,
-        "wed_inperson_pm": 1,
-        "wed_phonebank": 1
+        "mon_inperson_am": 1,
+        "tue_inperson_am": 1,
+        "wed_inperson_am": 1
       }
     }
   }

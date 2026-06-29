@@ -4,7 +4,7 @@
 (function () {
   "use strict";
 
-  var DV = "?v=11"; // cache-buster for data files (bump when data changes)
+  var DV = "?v=12"; // cache-buster for data files (bump when data changes)
   var DATA = {
     districts: "data/districts.geojson",
     boreslasher: "data/bores_lasher_results.geojson",
@@ -384,10 +384,44 @@
     return '<span class="sh-fellows' + (n ? "" : " zero") + '" title="Volunteers assigned to this shift">' +
       "👥 " + n + "</span>";
   }
-  function loadAvailability() {
-    fetch(DATA.availability + DV).then(function (r) { return r.json(); }).then(function (a) {
-      state.avail = a; renderPlan();
+  function loadAvailability(bust) {
+    // bust = true forces a fresh copy (used right after an in-app refresh).
+    var url = DATA.availability + DV + (bust ? "&t=" + Date.now() : "");
+    return fetch(url).then(function (r) { return r.json(); }).then(function (a) {
+      state.avail = a; renderPlan(); renderFellowStatus();
     }).catch(function () { /* file optional — planner works without it */ });
+  }
+  function asOfText(iso) {
+    if (!iso) return "";
+    var d = new Date(iso); if (isNaN(d)) return "";
+    var h = d.getHours(), ampm = h >= 12 ? "pm" : "am", h12 = (h % 12) || 12;
+    return prettyDate(d) + ", " + h12 + ":" + String(d.getMinutes()).padStart(2, "0") + ampm;
+  }
+  function renderFellowStatus() {
+    var el = document.getElementById("fellows-status"); if (!el) return;
+    var wa = weekAvail();
+    if (!state.avail) { el.textContent = ""; return; }
+    if (!wa) { el.textContent = "👥 No assigned schedule for this week yet."; return; }
+    var asof = asOfText(wa.published_at);
+    el.textContent = "👥 " + wa.assigned_total + " assigned" + (asof ? " · as of " + asof : "");
+  }
+  function refreshFellows() {
+    var btn = document.getElementById("fellows-refresh"),
+        status = document.getElementById("fellows-status");
+    if (btn) { btn.disabled = true; btn.textContent = "↻ Updating…"; }
+    fetch("/api/refresh-fellows", { method: "POST" }).then(function (r) {
+      if (!r.ok) throw new Error("refresh failed");
+      return r.json();
+    }).then(function (res) {
+      if (!res.ok) throw new Error("refresh failed");
+      return loadAvailability(true);
+    }).then(function () {
+      if (btn) btn.textContent = "✓ Updated";
+      setTimeout(function () { if (btn) { btn.disabled = false; btn.textContent = "↻ Update assigned counts"; } }, 2000);
+    }).catch(function () {
+      if (btn) { btn.disabled = false; btn.textContent = "↻ Update assigned counts"; }
+      if (status) status.textContent = "Couldn't update — open the map with start_map.command, then try again.";
+    });
   }
   function renderShiftBanner() {
     var b = document.getElementById("shift-banner"); if (!b) return; var d = parseISO(state.activeDay);
@@ -395,7 +429,7 @@
   }
   function renderWeekLabel() { var days = weekDays(); document.getElementById("week-label").textContent = "Week of " + prettyDate(days[0]) + " – " + prettyDate(days[6]); }
   function renderPlan() {
-    renderWeekLabel(); renderShiftBanner(); renderWeather();
+    renderWeekLabel(); renderShiftBanner(); renderWeather(); renderFellowStatus();
     var container = document.getElementById("plan-days");
     container.innerHTML = weekDays().map(function (d) {
       var iso = isoOf(d);
@@ -636,6 +670,7 @@
     document.getElementById("lyr-groc").addEventListener("change", function (e) { toggleGroc(e.target.checked); });
     document.getElementById("week-prev").addEventListener("click", function () { state.weekStart = addDays(state.weekStart, -7); state.activeDay = isoOf(state.weekStart); refreshDistricts(); renderPlan(); loadEvents(); });
     document.getElementById("week-next").addEventListener("click", function () { state.weekStart = addDays(state.weekStart, 7); state.activeDay = isoOf(state.weekStart); refreshDistricts(); renderPlan(); loadEvents(); });
+    document.getElementById("fellows-refresh").addEventListener("click", refreshFellows);
     document.getElementById("plan-print").addEventListener("click", printPlan);
     document.getElementById("plan-copy").addEventListener("click", copyPlan);
     document.getElementById("plan-clear").addEventListener("click", function () { if (!confirm("Remove everything from this week's plan?")) return; weekDays().forEach(function (d) { delete state.plan[isoOf(d)]; }); savePlan(); refreshDistricts(); renderPlan(); });

@@ -12,5 +12,6 @@ echo "Keep this window open while you use the map. Close it to stop."
 # Open the browser a moment after the server starts.
 ( sleep 1 && open "http://localhost:$PORT/index.html" ) &
 
-# Python 3 ships with macOS; this serves the current folder.
-python3 -m http.server "$PORT"
+# Python 3 ships with macOS. serve.py serves this folder AND enables the
+# in-app "Update assigned counts" button (an http.server can't do that).
+python3 serve.py

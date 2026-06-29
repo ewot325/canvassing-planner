@@ -83,6 +83,8 @@
   function escapeHtml(s) { return String(s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
   function escAttr(s) { return escapeHtml(s).replace(/"/g, "&quot;"); }
   function edShort(ed) { ed = String(ed); return Number(ed.slice(0, -3)) + "/" + Number(ed.slice(-3)); }
+  // Map label: "ED/AD" with the ED zero-padded to 2 digits, e.g. "07/67", "46/76".
+  function edAd(p) { var e = String(p.election_district); if (e.length < 2) e = "0" + e; return e + "/" + p.assembly_district; }
   function edLabel(ed) { ed = String(ed); return "AD " + Number(ed.slice(0, -3)) + " · ED " + Number(ed.slice(-3)); }
 
   function lerp(a, b, t) { return a.map(function (x, i) { return Math.round(x + (b[i] - x) * t); }); }
@@ -235,17 +237,14 @@
     if (overlay.labels) { overlay.labels.addTo(map); return; }
     if (!state.geo.districts) return;
     overlay.labels = L.layerGroup().addTo(map);
-    var adSum = {}, adCnt = {};
+    // One "ED/AD" label per district, placed at the district's representative
+    // interior point (falls back to the bounds center) so it stays well centered.
     Object.keys(edCentroid).forEach(function (ed) {
-      var p = state.edProps[ed]; if (!p) return; var c = edCentroid[ed], ad = p.assembly_district;
-      adSum[ad] = adSum[ad] || { lat: 0, lng: 0 }; adSum[ad].lat += c.lat; adSum[ad].lng += c.lng; adCnt[ad] = (adCnt[ad] || 0) + 1;
-      L.marker([c.lat, c.lng], { pane: "pane-labels", interactive: false, keyboard: false,
-        icon: L.divIcon({ className: "maplabel ed-label", html: String(p.election_district), iconSize: [26, 12], iconAnchor: [13, 6] }) }).addTo(overlay.labels);
-    });
-    Object.keys(adSum).forEach(function (ad) {
-      var n = adCnt[ad];
-      L.marker([adSum[ad].lat / n, adSum[ad].lng / n], { pane: "pane-labels", interactive: false, keyboard: false,
-        icon: L.divIcon({ className: "maplabel ad-label", html: "AD " + ad, iconSize: [46, 16], iconAnchor: [23, 8] }) }).addTo(overlay.labels);
+      var p = state.edProps[ed]; if (!p) return;
+      var c = edCentroid[ed];
+      var lat = num(p.representative_latitude) || c.lat, lng = num(p.representative_longitude) || c.lng;
+      L.marker([lat, lng], { pane: "pane-labels", interactive: false, keyboard: false,
+        icon: L.divIcon({ className: "maplabel ed-label", html: edAd(p), iconSize: [36, 12], iconAnchor: [18, 6] }) }).addTo(overlay.labels);
     });
   }
   function toggleHoods(on) {
@@ -497,7 +496,7 @@
     });
   }
   function renderPlan() {
-    renderWeekLabel(); renderShiftBanner(); renderWeather(); renderFellowStatus(); renderRecommendations();
+    renderWeekLabel(); renderShiftBanner(); renderWeather(); renderFellowStatus(); renderRecommendations(); renderEvents();
     var container = document.getElementById("plan-days");
     container.innerHTML = weekDays().map(function (d) {
       var iso = isoOf(d);
@@ -611,7 +610,7 @@
         return { lng: f.geometry.coordinates[0], lat: f.geometry.coordinates[1], hasNum: /\d/.test(label) };
       }).catch(function () { return null; });
   }
-  function ecHeader() { var ds = weekDays(); return '<div class="ic-title">Events · ' + prettyDate(ds[0]) + "–" + prettyDate(ds[6]) + "</div>"; }
+  function ecHeader() { var d = parseISO(state.activeDay); return '<div class="ic-title">Events · ' + dowName(d) + " " + prettyDate(d) + "</div>"; }
   function loadEvents() {
     var card = document.getElementById("events-card"); if (!card) return;
     card.innerHTML = ecHeader() + '<div class="ic-muted">Loading events…</div>';
@@ -639,12 +638,11 @@
   }
   function renderEvents() {
     var card = document.getElementById("events-card"); if (!card) return;
-    var evs = state.events || [];
-    if (!evs.length) { card.innerHTML = ecHeader() + '<div class="ic-muted">No district events found this week.</div>'; return; }
+    // Only the day currently being planned (state.activeDay).
+    var evs = (state.events || []).filter(function (e) { return e.date === state.activeDay; });
+    if (!evs.length) { card.innerHTML = ecHeader() + '<div class="ic-muted">No district events on this day.</div>'; return; }
     card.innerHTML = ecHeader() + '<ul class="ev-list">' + evs.map(function (e, i) {
-      var d = parseISO(e.date);
-      return '<li class="ev-row" data-i="' + i + '"><span class="ev-d">' + dowName(d) + " " + prettyDate(d) + "</span>" +
-        '<span class="ev-n">' + evIcon(e.type) + " " + escapeHtml(e.name) + "</span></li>";
+      return '<li class="ev-row" data-i="' + i + '"><span class="ev-n">' + evIcon(e.type) + " " + escapeHtml(e.name) + "</span></li>";
     }).join("") + '</ul><div class="ev-note" id="ev-note"></div>';
     Array.prototype.forEach.call(card.querySelectorAll(".ev-row"), function (li) {
       li.addEventListener("click", function () { focusEvent(evs[+li.getAttribute("data-i")]); });
@@ -710,13 +708,13 @@
 
   // ---- init ------------------------------------------------------------
   function makePanes() {
-    [["pane-groc", 610], ["pane-early", 615], ["pane-polls", 620], ["pane-search", 630], ["pane-labels", 660]].forEach(function (d) { map.createPane(d[0]); map.getPane(d[0]).style.zIndex = d[1]; });
+    // pane-labels sits below Leaflet's tooltipPane (z 650) so the hover banner covers the labels.
+    [["pane-groc", 610], ["pane-early", 615], ["pane-polls", 620], ["pane-search", 630], ["pane-labels", 640]].forEach(function (d) { map.createPane(d[0]); map.getPane(d[0]).style.zIndex = d[1]; });
     R = L.canvas({ padding: 0.5 });
   }
   function updateZoomClass() {
     var z = map.getZoom();
     map.getContainer().classList.toggle("show-stop-labels", z >= 14);
-    map.getContainer().classList.toggle("show-ed-labels", z >= 15);
   }
 
   function wireUi() {
@@ -814,6 +812,7 @@
         buildDistrictIndex(districts.features);
         buildDistrictLayer(districts);
         toggleLines(true); // default: ED + AD boundary lines on
+        toggleLabels(true); // default: ED/AD labels on
         loadEvents();
         map.invalidateSize();
         try { map.fitBounds(districtLayer.getBounds(), { padding: [20, 20], animate: false }); } catch (e) {}

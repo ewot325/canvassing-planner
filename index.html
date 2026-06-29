@@ -6,7 +6,7 @@
   <title>Canvassing Planner — Locations Map</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
         integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
-  <link rel="stylesheet" href="style.css?v=20" />
+  <link rel="stylesheet" href="style.css?v=21" />
 </head>
 <body>
   <div id="app">
@@ -39,7 +39,7 @@
           <span class="field-label">Show on the map</span>
           <div class="layer-toggles">
             <label class="toggle"><input type="checkbox" id="lyr-lines" checked /> District lines (ED &amp; AD)</label>
-            <label class="toggle"><input type="checkbox" id="lyr-labels" /> District labels (ED &amp; AD)</label>
+            <label class="toggle"><input type="checkbox" id="lyr-labels" checked /> District labels (ED/AD)</label>
             <label class="toggle"><input type="checkbox" id="lyr-hoods" /> Neighborhoods</label>
             <label class="toggle"><input type="checkbox" id="lyr-subway" /> Subway stops</label>
             <label class="toggle"><input type="checkbox" id="lyr-polls" /> Priority Election Day poll sites</label>
@@ -51,7 +51,7 @@
 
       <div class="rec-card">
         <div class="rec-head">
-          <span class="rec-title">🎯 Top targets this week</span>
+          <span class="rec-title">🎯 Top targets</span>
           <select id="rec-mode" class="rec-mode" title="What to optimize for">
             <option value="persuasion">Persuasion</option>
             <option value="gotv">Turnout (GOTV)</option>
@@ -126,6 +126,13 @@
       </ul>
       <p>Darker color = higher priority. Colors are spread by rank, so the top and bottom districts
         are always easy to tell apart. Click any district to see its persuasion and GOTV rank.</p>
+      <p>The <strong>🎯 Top targets</strong> list on the left ranks the highest-priority districts
+        for whichever goal you pick, using the same calculation. For each district it multiplies how
+        much room there is to help — the number of <strong>voters</strong> (persuasion) or
+        <strong>registered Democrats who don't reliably vote</strong> (turnout) — by how
+        <strong>little it's been canvassed</strong> so far. Districts with lots of opportunity and
+        little prior canvassing rise to the top; each row shows its registered Democrats and the
+        person-days already spent there.</p>
       <p class="sub">A note on demographics &amp; polls: we tested predicting each district's
         support from Census demographics and the campaign polls, but NY-12 is too uniform for that
         to work reliably — so the targeting uses solid fundamentals (registered Democrats, turnout,
@@ -164,6 +171,6 @@
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
           integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
-  <script src="app.js?v=20"></script>
+  <script src="app.js?v=21"></script>
 </body>
 </html>

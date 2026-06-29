@@ -117,6 +117,13 @@ html, body {
   margin: 12px 14px 0; font-size: 12px; color: var(--accent);
   background: var(--accent-soft); border-radius: 8px; padding: 8px 10px; line-height: 1.4;
 }
+.week-overview-btn {
+  display: block; width: calc(100% - 28px); margin: 8px 14px 0; padding: 8px 10px;
+  font-size: 12px; font-weight: 600; cursor: pointer; color: var(--accent);
+  background: var(--panel); border: 1px solid var(--border); border-radius: 8px;
+}
+.week-overview-btn:hover { background: var(--panel-2); }
+.week-overview-btn.on { color: #fff; background: var(--accent); border-color: var(--accent); }
 .fellows-bar {
   display: flex; align-items: center; gap: 8px; margin: 8px 14px 0;
 }

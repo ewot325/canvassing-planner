@@ -31,6 +31,8 @@
   var PLAN_KEY = "cm_plan_v3"; // plan items are now {k,id,label,lat,lng,icon}
 
   var DAY_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+  // distinct color per day for the "Week overview" map view (Mon..Sun)
+  var DAY_COLORS = ["#e6194B", "#f58231", "#2e8b57", "#1f6feb", "#911eb4", "#008080", "#9a6324"];
   var MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
   function shiftTime(date, shift) {
     var weekend = date.getDay() === 0 || date.getDay() === 6;
@@ -59,11 +61,12 @@
     geo: {}, edProps: {},
     shadingMode: "none",
     weekStart: null, activeDay: null, activeShift: "AM", plan: {},
-    pcts: {}, wx: null, events: [], avail: null, recMode: "persuasion",
+    pcts: {}, wx: null, events: [], avail: null, recMode: "persuasion", weekOverview: false,
   };
 
   var map, legend, districtLayer, R, searchMarker = null, searchTimer = null, searchAbort = null;
   var edHighlight = null, highlightRenderer = null;
+  var weekDayMap = {}; // elect_dist -> earliest day index (0=Mon) planned this week
   var overlay = { lines: null, labels: null, hoods: null, subway: null, polls: null, early: null, groc: null };
   var edCentroid = {};
   var maxBallots = 1, maxCoverage = 1, maxOpportunity = 1;
@@ -157,6 +160,11 @@
     var mode = state.shadingMode, p = feature.properties, sel = activeEdSet().has(String(p.elect_dist));
     // boundaries are drawn by the separate ED/AD lines layer; here only the selection highlight strokes
     var st = { color: "#1f6feb", weight: sel ? 2.8 : 0, opacity: 1 };
+    if (state.weekOverview) {
+      var di = weekDayMap[String(p.elect_dist)];
+      if (di === undefined) { st.fill = true; st.fillColor = "#cfd6dd"; st.fillOpacity = 0.05; return st; }
+      st.fill = true; st.fillColor = DAY_COLORS[di]; st.fillOpacity = 0.62; st.color = DAY_COLORS[di]; st.weight = sel ? 3 : 1.2; return st;
+    }
     if (mode === "none") { st.fill = true; st.fillColor = "#fff"; st.fillOpacity = 0.02; return st; }
     if (mode === "mayor2025") {
       var t = percentile("mayorShare", num(p.top_mayor_rank1_share));
@@ -213,7 +221,34 @@
       },
     }).addTo(map);
   }
-  function refreshDistricts() { if (!districtLayer) return; districtLayer.setStyle(districtStyle); updateLegend(); }
+  function buildWeekDayMap() {
+    weekDayMap = {};
+    weekDays().forEach(function (d, i) {
+      var iso = isoOf(d);
+      ["AM", "PM"].forEach(function (sh) {
+        shiftArr(iso, sh, false).forEach(function (it) {
+          if (it.k === "ed" && !(it.id in weekDayMap)) weekDayMap[it.id] = i;
+        });
+      });
+    });
+  }
+  function refreshDistricts() { if (!districtLayer) return; if (state.weekOverview) buildWeekDayMap(); districtLayer.setStyle(districtStyle); updateLegend(); }
+  function toggleWeekOverview() {
+    state.weekOverview = !state.weekOverview;
+    var btn = document.getElementById("week-overview");
+    if (btn) { btn.textContent = state.weekOverview ? "Hide week overview" : "Show week overview"; btn.classList.toggle("on", state.weekOverview); }
+    refreshDistricts();
+    if (state.weekOverview) { // frame the whole week's turf
+      var lls = [];
+      weekDays().forEach(function (d) {
+        var iso = isoOf(d);
+        ["AM", "PM"].forEach(function (sh) {
+          shiftArr(iso, sh, false).forEach(function (x) { if (x.k === "ed") { var c = edCentroid[String(x.id)]; if (c) lls.push([c.lat, c.lng]); } });
+        });
+      });
+      if (lls.length) { try { map.fitBounds(L.latLngBounds(lls), { padding: [60, 60], maxZoom: 15 }); } catch (e) {} }
+    }
+  }
   function edFeature(ed) {
     var fs = state.geo.districts && state.geo.districts.features; if (!fs) return null;
     for (var i = 0; i < fs.length; i++) if (String(fs[i].properties.elect_dist) === String(ed)) return fs[i];
@@ -381,6 +416,16 @@
   function updateLegend() {
     if (!legend) return;
     var el = legend.getContainer(), mode = state.shadingMode;
+    if (state.weekOverview) {
+      var html = "<h4>Week overview</h4>", any = false;
+      weekDays().forEach(function (d, i) {
+        var iso = isoOf(d);
+        var has = ["AM", "PM"].some(function (sh) { return shiftArr(iso, sh, false).some(function (x) { return x.k === "ed"; }); });
+        if (has) { any = true; html += cat(DAY_COLORS[i], DAY_NAMES[i] + " " + prettyDate(d)); }
+      });
+      el.innerHTML = html + (any ? "" : "<div class='sub'>No districts planned yet.</div>");
+      return;
+    }
     if (mode === "none") { el.innerHTML = "<h4>Map</h4><div class='sub'>Click a district for details.</div>"; return; }
     if (mode === "mayor2025") { el.innerHTML = "<h4>2025 Mayor — who led each ED</h4>" + cat(MAYOR_COLORS["Zohran Kwame Mamdani"], "Mamdani") + cat(MAYOR_COLORS["Andrew M. Cuomo"], "Cuomo") + cat(MAYOR_COLORS["Brad Lander"], "Lander") + '<div class="sub">Stronger color = bigger win.</div>'; return; }
     if (mode === "boreslasher") { el.innerHTML = "<h4>2026 Dem Primary — who won each ED</h4>" + cat(BL_COLORS.Bores, "Bores") + cat(BL_COLORS.Lasher, "Lasher") + cat(BL_COLORS.Tie, "Tie / other") + '<div class="sub">Stronger color = bigger margin.</div>'; return; }
@@ -805,6 +850,7 @@
     document.getElementById("week-next").addEventListener("click", function () { state.weekStart = addDays(state.weekStart, 7); state.activeDay = isoOf(state.weekStart); refreshDistricts(); renderPlan(); loadEvents(); });
     document.getElementById("rec-mode").addEventListener("change", function (e) { state.recMode = e.target.value; renderRecommendations(); });
     document.getElementById("rec-autoplan").addEventListener("click", autoPlanWeek);
+    document.getElementById("week-overview").addEventListener("click", toggleWeekOverview);
     document.getElementById("fellows-refresh").addEventListener("click", refreshFellows);
     document.getElementById("plan-print").addEventListener("click", printPlan);
     document.getElementById("plan-copy").addEventListener("click", copyPlan);

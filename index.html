@@ -6,7 +6,7 @@
   <title>Canvassing Planner — Locations Map</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
         integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
-  <link rel="stylesheet" href="style.css?v=26" />
+  <link rel="stylesheet" href="style.css?v=27" />
 </head>
 <body>
   <div id="app">
@@ -90,6 +90,7 @@
         <button id="week-next" title="Next week">›</button>
       </div>
       <div class="shift-banner" id="shift-banner"></div>
+      <button id="week-overview" class="week-overview-btn" type="button" title="Color the map by day to see the whole week's plan at once">Show week overview</button>
       <div class="fellows-bar">
         <span class="fellows-status" id="fellows-status"></span>
         <button id="fellows-refresh" type="button" title="Pull the latest assigned-volunteer counts from the staff schedule">↻ Update assigned counts</button>
@@ -174,6 +175,6 @@
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
           integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
-  <script src="app.js?v=26"></script>
+  <script src="app.js?v=27"></script>
 </body>
 </html>

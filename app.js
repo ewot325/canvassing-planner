@@ -67,7 +67,8 @@
   var map, legend, districtLayer, R, searchMarker = null, searchTimer = null, searchAbort = null;
   var edHighlight = null, highlightRenderer = null;
   var weekDayMap = {}; // elect_dist -> earliest day index (0=Mon) planned this week
-  var overlay = { lines: null, labels: null, hoods: null, subway: null, polls: null, early: null, groc: null };
+  var overlay = { lines: null, labels: null, hoods: null, subway: null, polls: null, early: null, groc: null, meet: null };
+  var reviewOpen = false, meetPick = null, reviewSetOverview = false;
   var edCentroid = {};
   var maxBallots = 1, maxCoverage = 1, maxOpportunity = 1;
   var TODAY = startOfDay(new Date());
@@ -108,6 +109,10 @@
   function loadPlan() { try { state.plan = JSON.parse(localStorage.getItem(PLAN_KEY)) || {}; } catch (e) { state.plan = {}; } }
   function savePlan() { try { localStorage.setItem(PLAN_KEY, JSON.stringify(state.plan)); } catch (e) {} }
   function shiftArr(iso, shift, make) { var d = state.plan[iso]; if (!d) { if (!make) return []; d = state.plan[iso] = { AM: [], PM: [] }; } if (!d[shift]) d[shift] = []; return d[shift]; }
+  // per-shift meeting point: stored on plan[iso].meet[shift] = {label, lat, lng}
+  function getMeet(iso, shift) { var d = state.plan[iso]; return (d && d.meet && d.meet[shift]) || null; }
+  function setMeet(iso, shift, obj) { var d = state.plan[iso]; if (!d) { d = state.plan[iso] = { AM: [], PM: [] }; } if (!d.meet) d.meet = {}; d.meet[shift] = obj; savePlan(); }
+  function clearMeet(iso, shift) { var d = state.plan[iso]; if (d && d.meet) { delete d.meet[shift]; savePlan(); } }
   function activeHas(id) { return shiftArr(state.activeDay, state.activeShift, false).some(function (x) { return x.id === id; }); }
   function activeEdSet() { return new Set(shiftArr(state.activeDay, state.activeShift, false).filter(function (x) { return x.k === "ed"; }).map(function (x) { return x.id; })); }
   function toggleItem(item) {
@@ -609,6 +614,7 @@
   }
   function renderPlan() {
     renderWeekLabel(); renderShiftBanner(); renderWeather(); renderFellowStatus(); renderRecommendations(); renderEvents();
+    if (reviewOpen) { renderReview(); renderMeetMarkers(); }
     var container = document.getElementById("plan-days");
     container.innerHTML = weekDays().map(function (d) {
       var iso = isoOf(d);
@@ -638,25 +644,163 @@
     weekDays().forEach(function (d) {
       var iso = isoOf(d); if (!["AM", "PM"].some(function (sh) { return shiftArr(iso, sh, false).length; })) return;
       lines.push(dowName(d) + " " + prettyDate(d) + ":");
-      ["AM", "PM"].forEach(function (sh) { var items = shiftArr(iso, sh, false); if (items.length) lines.push("  " + sh + " (" + shiftTime(d, sh) + "): " + items.map(itemText).join(", ")); });
+      ["AM", "PM"].forEach(function (sh) {
+        var items = shiftArr(iso, sh, false); if (!items.length) return;
+        lines.push("  " + sh + " (" + shiftTime(d, sh) + "): " + items.map(itemText).join(", "));
+        var m = getMeet(iso, sh); if (m) lines.push("    Meet: " + m.label);
+      });
       lines.push("");
     });
     if (lines.length <= 2) lines.push("(nothing assigned yet)");
     return lines.join("\n");
   }
   function copyPlan() {
-    var text = planAsText(), done = function () { var el = document.getElementById("plan-copied"); el.textContent = "Copied to clipboard ✓"; setTimeout(function () { el.textContent = ""; }, 2500); };
+    var text = planAsText(), done = function () { var el = document.getElementById("review-copied"); if (!el) return; el.textContent = "Copied to clipboard ✓"; setTimeout(function () { el.textContent = ""; }, 2500); };
     if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(done, function () { window.prompt("Copy the plan:", text); }); else window.prompt("Copy the plan:", text);
   }
   function printPlan() {
     var rows = weekDays().map(function (d) {
       var iso = isoOf(d);
-      var inner = ["AM", "PM"].map(function (sh) { var items = shiftArr(iso, sh, false); return "<div class='sh'><strong>" + sh + " (" + shiftTime(d, sh) + ")</strong>: " + (items.length ? items.map(itemText).join(", ") : "—") + "</div>"; }).join("");
+      var inner = ["AM", "PM"].map(function (sh) {
+        var items = shiftArr(iso, sh, false); var m = getMeet(iso, sh);
+        return "<div class='sh'><strong>" + sh + " (" + shiftTime(d, sh) + ")</strong>: " + (items.length ? items.map(itemText).join(", ") : "—") +
+          (m ? "<div class='meet'>📍 Meet: " + escapeHtml(m.label) + "</div>" : "") + "</div>";
+      }).join("");
       return "<div class='d'><h3>" + dowName(d) + " " + prettyDate(d) + "</h3>" + inner + "</div>";
     }).join("");
-    var html = "<html><head><title>Canvassing plan</title><style>body{font-family:-apple-system,Arial,sans-serif;margin:32px;color:#1f2b38}h1{font-size:20px}h3{font-size:14px;margin:0 0 4px;border-bottom:1px solid #ccc;padding-bottom:3px}.d{margin-bottom:12px}.sh{font-size:13px;margin:2px 0}</style></head><body><h1>Canvassing plan</h1><h2 style='font-size:14px;color:#555'>" + escapeHtml(document.getElementById("week-label").textContent) + "</h2>" + rows + "</body></html>";
+    var html = "<html><head><title>Canvassing plan</title><style>body{font-family:-apple-system,Arial,sans-serif;margin:32px;color:#1f2b38}h1{font-size:20px}h3{font-size:14px;margin:0 0 4px;border-bottom:1px solid #ccc;padding-bottom:3px}.d{margin-bottom:12px}.sh{font-size:13px;margin:2px 0}.meet{font-size:12px;color:#555;margin:1px 0 0 14px}</style></head><body><h1>Canvassing plan</h1><h2 style='font-size:14px;color:#555'>" + escapeHtml(document.getElementById("week-label").textContent) + "</h2>" + rows + "</body></html>";
     var w = window.open("", "_blank"); if (!w) { alert("Please allow pop-ups to print the plan."); return; }
     w.document.write(html); w.document.close(); w.focus(); setTimeout(function () { w.print(); }, 250);
+  }
+
+  // ====================================================================
+  //  REVIEW & PUBLISH  (slide-in panel: week overview + per-shift meeting points + export)
+  // ====================================================================
+  function geocodePlaces(q) {
+    return fetch(GEOCODE + encodeURIComponent(q)).then(function (r) { return r.json(); }).then(function (d) {
+      return (d.features || []).map(function (f) {
+        var pp = photonParts(f.properties);
+        return { name: pp.name, addr: pp.addr, lat: f.geometry.coordinates[1], lng: f.geometry.coordinates[0] };
+      });
+    }).catch(function () { return []; });
+  }
+  function reverseGeocode(lat, lng) {
+    return fetch("https://photon.komoot.io/reverse?lat=" + lat + "&lon=" + lng).then(function (r) { return r.json(); })
+      .then(function (d) { var f = d.features && d.features[0]; if (!f) return null; var pp = photonParts(f.properties); return pp.name + (pp.addr ? ", " + pp.addr : ""); })
+      .catch(function () { return null; });
+  }
+  function meetLabel(iso, sh) { return dowName(parseISO(iso)) + " " + sh; }
+  function renderMeetMarkers() {
+    if (overlay.meet) { map.removeLayer(overlay.meet); overlay.meet = null; }
+    if (!reviewOpen) return;
+    overlay.meet = L.layerGroup().addTo(map);
+    weekDays().forEach(function (d, di) {
+      var iso = isoOf(d);
+      ["AM", "PM"].forEach(function (sh) {
+        var m = getMeet(iso, sh); if (!m) return;
+        L.marker([m.lat, m.lng], { icon: pinIcon("meet-pin", DAY_COLORS[di], "M"), pane: "pane-search" })
+          .addTo(overlay.meet).bindTooltip(meetLabel(iso, sh) + " — " + m.label, { direction: "top" });
+      });
+    });
+  }
+  function renderReview() {
+    var wk = document.getElementById("review-week"); if (wk) wk.textContent = document.getElementById("week-label").textContent;
+    var body = document.getElementById("review-body"); if (!body) return;
+    var html = "", any = false;
+    weekDays().forEach(function (d, di) {
+      var iso = isoOf(d);
+      var shifts = ["AM", "PM"].filter(function (sh) { return shiftArr(iso, sh, false).length; });
+      if (!shifts.length) return; any = true;
+      html += '<div class="rv-day"><div class="rv-day-head"><span class="rv-dot" style="background:' + DAY_COLORS[di] + '"></span>' + dowName(d) + " " + prettyDate(d) + "</div>";
+      shifts.forEach(function (sh) {
+        var items = shiftArr(iso, sh, false);
+        var chips = items.map(function (it) { return '<span class="rv-chip">' + (it.icon ? escapeHtml(it.icon) + " " : "") + escapeHtml(it.label) + "</span>"; }).join("");
+        var meet = getMeet(iso, sh), mh;
+        if (meet) {
+          mh = '<div class="rv-meet set"><span class="rv-meet-label">📍 ' + escapeHtml(meet.label) + "</span>" +
+            '<button class="rv-meet-change" data-iso="' + iso + '" data-sh="' + sh + '">change</button>' +
+            '<button class="rv-meet-clear" data-iso="' + iso + '" data-sh="' + sh + '" title="Remove">✕</button></div>';
+        } else {
+          mh = '<div class="rv-meet"><div class="rv-meet-row">' +
+            '<input class="rv-meet-search" type="search" placeholder="Search a meeting place…" data-iso="' + iso + '" data-sh="' + sh + '" />' +
+            '<button class="rv-meet-map" data-iso="' + iso + '" data-sh="' + sh + '">📍 Map</button></div>' +
+            '<ul class="rv-meet-results"></ul></div>';
+        }
+        html += '<div class="rv-shift"><div class="rv-shift-head">' + sh + ' <span class="rv-time">' + shiftTime(d, sh) + "</span></div>" +
+          '<div class="rv-chips">' + chips + "</div>" + mh + "</div>";
+      });
+      html += "</div>";
+    });
+    body.innerHTML = any ? html : '<div class="rv-empty">No districts planned yet — add some to a shift first, then come back to set meeting points and publish.</div>';
+    wireReviewControls(body);
+  }
+  function wireReviewControls(body) {
+    function meetReset(b) { clearMeet(b.getAttribute("data-iso"), b.getAttribute("data-sh")); renderReview(); renderMeetMarkers(); }
+    Array.prototype.forEach.call(body.querySelectorAll(".rv-meet-clear"), function (b) { b.addEventListener("click", function () { meetReset(b); }); });
+    Array.prototype.forEach.call(body.querySelectorAll(".rv-meet-change"), function (b) { b.addEventListener("click", function () { meetReset(b); }); });
+    Array.prototype.forEach.call(body.querySelectorAll(".rv-meet-map"), function (b) { b.addEventListener("click", function () { pickMeetOnMap(b.getAttribute("data-iso"), b.getAttribute("data-sh")); }); });
+    Array.prototype.forEach.call(body.querySelectorAll(".rv-meet-search"), function (inp) {
+      var timer = null, results = inp.parentNode.parentNode.querySelector(".rv-meet-results");
+      inp.addEventListener("input", function () {
+        var q = inp.value.trim(); clearTimeout(timer);
+        if (q.length < 3) { results.innerHTML = ""; return; }
+        timer = setTimeout(function () {
+          geocodePlaces(q).then(function (rs) {
+            results.innerHTML = rs.slice(0, 5).map(function (r, i) { return '<li data-i="' + i + '"><strong>' + escapeHtml(r.name) + "</strong>" + (r.addr ? " <span class='sub'>" + escapeHtml(r.addr) + "</span>" : "") + "</li>"; }).join("");
+            Array.prototype.forEach.call(results.querySelectorAll("li"), function (li) {
+              li.addEventListener("click", function () {
+                var r = rs[+li.getAttribute("data-i")];
+                setMeet(inp.getAttribute("data-iso"), inp.getAttribute("data-sh"), { label: r.name + (r.addr ? ", " + r.addr : ""), lat: r.lat, lng: r.lng });
+                renderReview(); renderMeetMarkers();
+              });
+            });
+          });
+        }, 280);
+      });
+    });
+  }
+  function pickMeetOnMap(iso, sh) {
+    meetPick = { iso: iso, sh: sh };
+    document.getElementById("review-panel").classList.remove("open");
+    var banner = document.getElementById("meet-banner");
+    banner.textContent = "Click the map to set the meeting point for " + meetLabel(iso, sh) + "  (Esc to cancel)";
+    banner.classList.add("show");
+    map.getContainer().style.cursor = "crosshair";
+    map.once("click", onMeetClick);
+  }
+  function onMeetClick(e) {
+    var p = meetPick; if (!p) return; endMeetPickUi();
+    var lat = e.latlng.lat, lng = e.latlng.lng;
+    reverseGeocode(lat, lng).then(function (label) {
+      setMeet(p.iso, p.sh, { label: label || "Pinned spot", lat: lat, lng: lng });
+      renderMeetMarkers(); openReview();
+    });
+  }
+  function endMeetPickUi() {
+    meetPick = null;
+    var b = document.getElementById("meet-banner"); if (b) b.classList.remove("show");
+    if (map) map.getContainer().style.cursor = "";
+  }
+  function cancelMeetPick() { if (!meetPick) return; map.off("click", onMeetClick); endMeetPickUi(); openReview(); }
+  function openReview() {
+    reviewOpen = true;
+    if (!state.weekOverview) {
+      reviewSetOverview = true; state.weekOverview = true;
+      var b = document.getElementById("week-overview"); if (b) { b.textContent = "Hide week overview"; b.classList.add("on"); }
+      refreshDistricts();
+    }
+    renderReview(); renderMeetMarkers();
+    document.getElementById("review-panel").classList.add("open");
+  }
+  function closeReview() {
+    reviewOpen = false;
+    document.getElementById("review-panel").classList.remove("open");
+    if (reviewSetOverview) {
+      reviewSetOverview = false; state.weekOverview = false;
+      var b = document.getElementById("week-overview"); if (b) { b.textContent = "Show week overview"; b.classList.remove("on"); }
+      refreshDistricts();
+    }
+    renderMeetMarkers();
   }
 
   // ====================================================================
@@ -852,15 +996,22 @@
     document.getElementById("rec-autoplan").addEventListener("click", autoPlanWeek);
     document.getElementById("week-overview").addEventListener("click", toggleWeekOverview);
     document.getElementById("fellows-refresh").addEventListener("click", refreshFellows);
-    document.getElementById("plan-print").addEventListener("click", printPlan);
-    document.getElementById("plan-copy").addEventListener("click", copyPlan);
+    document.getElementById("plan-review").addEventListener("click", openReview);
+    document.getElementById("review-close").addEventListener("click", closeReview);
+    document.getElementById("review-print").addEventListener("click", printPlan);
+    document.getElementById("review-copy").addEventListener("click", copyPlan);
     document.getElementById("plan-clear").addEventListener("click", function () { if (!confirm("Remove everything from this week's plan?")) return; weekDays().forEach(function (d) { delete state.plan[isoOf(d)]; }); savePlan(); refreshDistricts(); renderPlan(); });
 
     var modal = document.getElementById("info-modal");
     document.getElementById("info-btn").addEventListener("click", function () { modal.classList.remove("hidden"); });
     document.getElementById("info-close").addEventListener("click", function () { modal.classList.add("hidden"); });
     modal.addEventListener("click", function (e) { if (e.target === modal) modal.classList.add("hidden"); });
-    document.addEventListener("keydown", function (e) { if (e.key === "Escape") modal.classList.add("hidden"); });
+    document.addEventListener("keydown", function (e) {
+      if (e.key !== "Escape") return;
+      if (meetPick) { cancelMeetPick(); return; }
+      if (reviewOpen) { closeReview(); return; }
+      modal.classList.add("hidden");
+    });
 
     map.on("zoomend", updateZoomClass);
     map.on("popupopen", function (e) {

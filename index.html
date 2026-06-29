@@ -6,7 +6,7 @@
   <title>Canvassing Planner — Locations Map</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
         integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
-  <link rel="stylesheet" href="style.css?v=27" />
+  <link rel="stylesheet" href="style.css?v=28" />
 </head>
 <body>
   <div id="app">
@@ -102,13 +102,28 @@
       </p>
       <div class="plan-days" id="plan-days"><!-- filled by app.js --></div>
       <div class="plan-actions">
-        <button id="plan-print">🖨 Print / Save PDF</button>
-        <button id="plan-copy">📋 Copy as text</button>
+        <button id="plan-review" class="primary">Review &amp; publish</button>
         <button id="plan-clear" class="danger">Clear this week</button>
       </div>
-      <div class="plan-copied" id="plan-copied"></div>
     </aside>
   </div>
+
+  <!-- Review & publish: slide-in panel over the right side, map stays visible -->
+  <aside id="review-panel" class="review-panel">
+    <header class="review-head">
+      <h2>Review &amp; publish</h2>
+      <button id="review-close" class="modal-close" aria-label="Close">✕</button>
+    </header>
+    <div class="review-week" id="review-week"></div>
+    <p class="review-hint">The map is colored by day. Set a meeting point for each shift — search a place or pick it on the map.</p>
+    <div class="review-body" id="review-body"></div>
+    <div class="review-actions">
+      <button id="review-print">🖨 Print / Save PDF</button>
+      <button id="review-copy">📋 Copy as text</button>
+    </div>
+    <div class="review-copied" id="review-copied"></div>
+  </aside>
+  <div id="meet-banner" class="meet-banner"></div>
 
   <div id="info-modal" class="modal hidden" role="dialog" aria-modal="true">
     <div class="modal-card">
@@ -175,6 +190,6 @@
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
           integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
-  <script src="app.js?v=27"></script>
+  <script src="app.js?v=28"></script>
 </body>
 </html>

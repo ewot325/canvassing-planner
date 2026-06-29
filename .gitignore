@@ -1,3 +1,6 @@
 .DS_Store
 *.log
 model/data/.census_key
+
+# Local Netlify folder
+.netlify

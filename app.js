@@ -58,7 +58,7 @@
 
   var map, legend, districtLayer, markerLayer;
   var overlay = { hoods: null, subway: null, polls: null, early: null, groc: null };
-  var renderers = {};
+  var R; // single shared canvas renderer for all vector layers (so clicks hit-test correctly)
   var edCentroid = {};
   var maxWeighted = 1, maxBallots = 1, maxCoverage = 1, maxOpportunity = 1;
   var TODAY = startOfDay(new Date());
@@ -165,7 +165,7 @@
     markerLayer.clearLayers(); state.markersById = {};
     state.locations.forEach(function (loc) {
       if (!isFinite(loc.latitude) || !isFinite(loc.longitude)) return;
-      var m = L.circleMarker([loc.latitude, loc.longitude], { radius: radiusFor(loc.weighted_person_days), color: "#fff", weight: 1.5, fillColor: "#243b53", fillOpacity: 0.9, pane: "pane-sites", renderer: renderers.sites });
+      var m = L.circleMarker([loc.latitude, loc.longitude], { radius: radiusFor(loc.weighted_person_days), color: "#fff", weight: 1.5, fillColor: "#243b53", fillOpacity: 0.9, renderer: R });
       m.bindPopup(sitePopup(loc), { maxWidth: 320 });
       m.on("click", function () { selectLocation(loc.location_id, false); });
       m.addTo(markerLayer); state.markersById[loc.location_id] = m;
@@ -251,7 +251,7 @@
 
   function buildDistrictLayer(g) {
     districtLayer = L.geoJSON(g, {
-      pane: "pane-shading", renderer: renderers.shading, style: districtStyle,
+      renderer: R, style: districtStyle,
       onEachFeature: function (f, layer) {
         var ed = String(f.properties.elect_dist);
         state.edProps[ed] = f.properties;
@@ -275,7 +275,7 @@
     if (!on) { if (overlay.hoods) map.removeLayer(overlay.hoods); return; }
     if (overlay.hoods) { overlay.hoods.addTo(map); return; }
     ensureData("neighborhoods").then(function (g) {
-      overlay.hoods = L.geoJSON(g, { pane: "pane-hoods", renderer: renderers.hoods, style: { fill: false, color: "#6a4c93", weight: 1.4, opacity: 0.85, dashArray: "4 3" },
+      overlay.hoods = L.geoJSON(g, { renderer: R, interactive: false, style: { fill: false, color: "#6a4c93", weight: 1.4, opacity: 0.85, dashArray: "4 3" },
         onEachFeature: function (f, l) { l.bindTooltip(escapeHtml(f.properties.name || "Neighborhood"), { permanent: true, direction: "center", className: "hood-label" }); } }).addTo(map);
     });
   }
@@ -284,7 +284,7 @@
     if (overlay.subway) { overlay.subway.addTo(map); return; }
     ensureData("subway").then(function (g) {
       overlay.subway = L.geoJSON(g, {
-        pointToLayer: function (f, latlng) { return L.circleMarker(latlng, { pane: "pane-subway", renderer: renderers.subway, radius: 4.5, color: "#fff", weight: 1.5, fillColor: trunkColor(f.properties.routes), fillOpacity: 1 }); },
+        pointToLayer: function (f, latlng) { return L.circleMarker(latlng, { renderer: R, radius: 4.5, color: "#fff", weight: 1.5, fillColor: trunkColor(f.properties.routes), fillOpacity: 1 }); },
         onEachFeature: function (f, l) {
           var p = f.properties, label = escapeHtml(p.name || "");
           l.bindTooltip(label, { permanent: true, direction: "right", offset: [6, 0], className: "station-label" });
@@ -418,12 +418,14 @@
 
   // ---- init ------------------------------------------------------------
   function makePanes() {
-    var defs = [["pane-shading", 410], ["pane-hoods", 420], ["pane-subway", 440], ["pane-sites", 450], ["pane-groc", 610], ["pane-early", 615], ["pane-polls", 620]];
-    defs.forEach(function (d) { map.createPane(d[0]); map.getPane(d[0]).style.zIndex = d[1]; });
-    renderers.shading = L.canvas({ pane: "pane-shading" });
-    renderers.hoods = L.canvas({ pane: "pane-hoods" });
-    renderers.subway = L.canvas({ pane: "pane-subway" });
-    renderers.sites = L.canvas({ pane: "pane-sites" });
+    // Only DOM-marker pins need their own panes (small divs that don't block map clicks).
+    [["pane-groc", 610], ["pane-early", 615], ["pane-polls", 620]].forEach(function (d) {
+      map.createPane(d[0]); map.getPane(d[0]).style.zIndex = d[1];
+    });
+    // One shared canvas for districts + dots + subway + neighborhoods. Stacking the
+    // canvas layers in separate panes made the top canvas swallow every click, so the
+    // districts underneath were unclickable. A single canvas hit-tests all of them.
+    R = L.canvas({ padding: 0.5 });
   }
   function updateZoomClass() { map.getContainer().classList.toggle("show-stop-labels", map.getZoom() >= 14); }
 

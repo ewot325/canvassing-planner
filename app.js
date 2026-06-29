@@ -50,7 +50,10 @@
   var MAYOR_SHORT = { "Zohran Kwame Mamdani": "Mamdani", "Andrew M. Cuomo": "Cuomo", "Brad Lander": "Lander" };
   var BL_COLORS = { Bores: "#006544", Lasher: "#fdb800", Tie: "#9aa7b4", "No votes": "#e6eaee" };
   function leanColor(cat) { cat = String(cat || ""); if (/bores/i.test(cat)) return "#006544"; if (/lasher/i.test(cat)) return "#c79100"; return "#6b7785"; }
-  var RAMPS = { opportunity: [[255, 247, 232], [150, 0, 12]], turnout: [[233, 242, 255], [3, 41, 99]], coverage: [[233, 250, 236], [0, 78, 33]] };
+  var RAMPS = {
+    opportunity: [[255, 247, 232], [150, 0, 12]], turnout: [[233, 242, 255], [3, 41, 99]], coverage: [[233, 250, 236], [0, 78, 33]],
+    persuasion: [[243, 240, 252], [88, 28, 135]], gotv: [[235, 250, 245], [5, 102, 84]],
+  };
 
   var state = {
     geo: {}, edProps: {},
@@ -127,12 +130,21 @@
     var ballots = num(p.ballots_cast), cov = num(p.distance_adjusted_weighted_person_days) || num(p.weighted_person_days);
     if (mode === "turnout") return ballots;
     if (mode === "coverage") return cov;
-    var tN = maxBallots > 0 ? ballots / maxBallots : 0, cN = maxCoverage > 0 ? cov / maxCoverage : 0;
-    return tN * (1 - clamp01(cN));
+    var cN = maxCoverage > 0 ? cov / maxCoverage : 0, gap = 1 - clamp01(cN);
+    if (mode === "gotv") {
+      // Mobilization: registered Dems who DON'T reliably vote, in under-canvassed turf.
+      var regDem = num(p.reg_dem_2024), tr = clamp01(num(p.turnout_per_reg_dem));
+      return regDem * (1 - tr) * gap;
+    }
+    // persuasion / opportunity: where actual voters are, in under-canvassed turf.
+    var tN = maxBallots > 0 ? ballots / maxBallots : 0;
+    return tN * gap;
   }
   function buildPercentiles(feats) {
     function sortedBy(fn, filter) { var a = []; feats.forEach(function (f) { if (filter && !filter(f.properties)) return; a.push(fn(f.properties)); }); a.sort(function (x, y) { return x - y; }); return a; }
     state.pcts.opportunity = sortedBy(function (p) { return districtMetric(p, "opportunity"); });
+    state.pcts.persuasion = sortedBy(function (p) { return districtMetric(p, "persuasion"); });
+    state.pcts.gotv = sortedBy(function (p) { return districtMetric(p, "gotv"); });
     state.pcts.turnout = sortedBy(function (p) { return num(p.ballots_cast); });
     state.pcts.coverage = sortedBy(function (p) { return num(p.distance_adjusted_weighted_person_days) || num(p.weighted_person_days); });
     state.pcts.mayorShare = sortedBy(function (p) { return num(p.top_mayor_rank1_share); }, function (p) { return p.top_mayor_rank1_candidate; });
@@ -152,7 +164,7 @@
       st.fillColor = BL_COLORS[p.bl_winner] || "#b48ead";
       st.fillOpacity = num(p.bl_total) > 0 ? 0.3 + tm * 0.55 : 0.1;
     } else {
-      var val = mode === "turnout" ? num(p.ballots_cast) : mode === "coverage" ? (num(p.distance_adjusted_weighted_person_days) || num(p.weighted_person_days)) : districtMetric(p, "opportunity");
+      var val = mode === "turnout" ? num(p.ballots_cast) : mode === "coverage" ? (num(p.distance_adjusted_weighted_person_days) || num(p.weighted_person_days)) : districtMetric(p, mode);
       var tt = percentile(mode, val);
       st.fillColor = rampCol(mode, tt); st.fillOpacity = 0.45 + tt * 0.42;
     }
@@ -175,8 +187,12 @@
     var mayPct = regDem ? " (" + Math.round(mayT / regDem * 100) + "% of Dems)" : "";
     var c = edCentroid[ed] || { lat: 0, lng: 0 };
     var item = { k: "ed", id: ed, label: "ED " + edShort(ed), lat: c.lat, lng: c.lng, icon: "🗳" };
+    function topPct(name) { return Math.max(1, Math.round((1 - percentile(name, districtMetric(p, name))) * 100)); }
+    var targetLine = "<span class='k'>Persuasion</span><span>top " + topPct("persuasion") + "%</span>" +
+      "<span class='k'>Turnout (GOTV)</span><span>top " + topPct("gotv") + "%</span>";
     return '<div class="popup-title">Election District ' + p.election_district + " <span class='sub'>(AD " + p.assembly_district + ")</span></div>" +
       "<div class='popup-grid'><span class='k'>Registered Dems</span><span>" + commas(regDem) + (regTot ? " <span class='sub'>of " + commas(regTot) + "</span>" : "") + "</span></div>" +
+      "<div class='popup-sec'><strong>Canvassing targeting</strong><div class='popup-grid'>" + targetLine + "</div></div>" +
       "<div class='popup-sec'><strong>2026 Dem primary</strong><div class='popup-grid'><span class='k'>Turnout</span><span>" + commas(primT) + primPct + "</span><span class='k'>Result</span><span>" + primLine + "</span></div></div>" +
       "<div class='popup-sec'><strong>2025 Mayor (Dem primary)</strong><div class='popup-grid'><span class='k'>Turnout</span><span>" + commas(mayT) + mayPct + "</span><span class='k'>Result</span><span>" + mayLine + "</span></div></div>" +
       addBtnHtml(item);
@@ -353,8 +369,13 @@
     if (mode === "none") { el.innerHTML = "<h4>Map</h4><div class='sub'>Click a district for details.</div>"; return; }
     if (mode === "mayor2025") { el.innerHTML = "<h4>2025 Mayor — who led each ED</h4>" + cat(MAYOR_COLORS["Zohran Kwame Mamdani"], "Mamdani") + cat(MAYOR_COLORS["Andrew M. Cuomo"], "Cuomo") + cat(MAYOR_COLORS["Brad Lander"], "Lander") + '<div class="sub">Stronger color = bigger win.</div>'; return; }
     if (mode === "boreslasher") { el.innerHTML = "<h4>2026 Dem Primary — who won each ED</h4>" + cat(BL_COLORS.Bores, "Bores") + cat(BL_COLORS.Lasher, "Lasher") + cat(BL_COLORS.Tie, "Tie / other") + '<div class="sub">Stronger color = bigger margin.</div>'; return; }
-    var titles = { opportunity: "Priority for next week", turnout: "2025 Dem primary turnout", coverage: "Canvassing coverage so far" };
-    var ends = { opportunity: ["covered / low turnout", "high turnout, under-canvassed"], turnout: ["fewer voters", "more voters"], coverage: ["not canvassed", "heavily canvassed"] };
+    var titles = { opportunity: "Priority for next week", persuasion: "Persuasion targets", gotv: "Turnout (GOTV) targets", turnout: "2025 Dem primary turnout", coverage: "Canvassing coverage so far" };
+    var ends = {
+      opportunity: ["covered / low turnout", "high turnout, under-canvassed"],
+      persuasion: ["covered / few voters", "many voters, under-canvassed"],
+      gotv: ["covered / few idle Dems", "many non-voting Dems, uncovered"],
+      turnout: ["fewer voters", "more voters"], coverage: ["not canvassed", "heavily canvassed"],
+    };
     var ramp = ""; for (var i = 0; i <= 8; i++) ramp += '<span style="background:' + rampCol(mode, i / 8) + '"></span>';
     el.innerHTML = "<h4>" + titles[mode] + "</h4><div class='ramp'>" + ramp + "</div><div class='ends'><span>" + ends[mode][0] + "</span><span>" + ends[mode][1] + "</span></div>";
   }

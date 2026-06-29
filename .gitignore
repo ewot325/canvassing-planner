@@ -1,2 +1,3 @@
 .DS_Store
 *.log
+model/data/.census_key

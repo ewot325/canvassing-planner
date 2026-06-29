@@ -6,7 +6,7 @@
   <title>Canvassing Planner — Locations Map</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
         integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
-  <link rel="stylesheet" href="style.css?v=18" />
+  <link rel="stylesheet" href="style.css?v=19" />
 </head>
 <body>
   <div id="app">
@@ -26,7 +26,8 @@
           <span class="field-label">Color the districts by</span>
           <select id="shading-mode">
             <option value="none" selected>No shading</option>
-            <option value="opportunity">Priority for next week</option>
+            <option value="persuasion">🎯 Persuasion targets</option>
+            <option value="gotv">🎯 Turnout (GOTV) targets</option>
             <option value="boreslasher">2026 Dem Primary Results</option>
             <option value="mayor2025">2025 Mayor — Mamdani vs Cuomo</option>
             <option value="turnout">2025 Dem turnout</option>
@@ -99,27 +100,33 @@
       <button id="info-close" class="modal-close" aria-label="Close">✕</button>
       <h2>How this works</h2>
 
-      <h3>How “Priority for next week” is calculated</h3>
-      <p>The default shading highlights the election districts that are the best use of
-        canvassing time: places with <strong>many Democratic voters</strong> that the team has
-        <strong>not canvassed much yet</strong>.</p>
-      <p>For each district it combines two things:</p>
+      <h3>Finding the best districts to canvass</h3>
+      <p>Two “🎯 targeting” shadings highlight the election districts that are the best use of
+        canvassing time. Both <strong>subtract the canvassing you've already done</strong>, so the
+        map always points you at fresh turf. Pick whichever matches your goal for the week:</p>
       <ul>
-        <li><strong>Turnout</strong> — how many people voted in the 2025 Democratic primary
-          (more voters = more valuable).</li>
-        <li><strong>Coverage</strong> — how much canvassing that area has already received.</li>
+        <li><strong>🎯 Persuasion targets</strong> — districts where <strong>lots of people
+          actually vote</strong> but the team <strong>hasn't canvassed much</strong>. Best when the
+          goal is to talk to reliable voters and win them over.</li>
+        <li><strong>🎯 Turnout (GOTV) targets</strong> — districts with <strong>many registered
+          Democrats who don't reliably vote</strong>, again where you haven't canvassed. Best when
+          the goal is to get supporters who often stay home to actually show up.</li>
       </ul>
-      <p>Districts that are <strong>high&nbsp;turnout but low&nbsp;coverage</strong> get the
-        darkest red. Already-covered or low-turnout districts fade to light. Colors are spread by
-        rank, so the highest and lowest are always easy to tell apart.</p>
+      <p>Darker color = higher priority. Colors are spread by rank, so the top and bottom districts
+        are always easy to tell apart. Click any district to see its persuasion and GOTV rank.</p>
+      <p class="sub">A note on demographics &amp; polls: we tested predicting each district's
+        support from Census demographics and the campaign polls, but NY-12 is too uniform for that
+        to work reliably — so the targeting uses solid fundamentals (registered Democrats, turnout,
+        and coverage) instead. The polls still guide overall strategy (e.g. lots of undecided
+        voters, a gender gap worth messaging on).</p>
 
       <h3>Using the site</h3>
       <p><strong>Left panel</strong></p>
       <ul>
         <li><em>Search</em> — type any address or place to find it on the map (you can add it to a
           shift too).</li>
-        <li><em>Color the districts by</em> — switch the shading (priority, 2026 primary results,
-          2025 mayor, turnout, or coverage).</li>
+        <li><em>Color the districts by</em> — switch the shading (persuasion targets, turnout/GOTV
+          targets, 2026 primary results, 2025 mayor, turnout, or coverage).</li>
         <li><em>Show on the map</em> — toggle the district lines &amp; labels (election +
           assembly districts), neighborhoods, subway stops, priority poll sites, early
           voting sites, and supermarkets.</li>
@@ -128,8 +135,8 @@
       </ul>
       <p><strong>The map</strong></p>
       <ul>
-        <li><strong>Click an election district</strong> to see its registered Democrats, 2026
-          primary result, and 2025 mayoral result.</li>
+        <li><strong>Click an election district</strong> to see its registered Democrats, its
+          persuasion &amp; GOTV targeting rank, the 2026 primary result, and 2025 mayoral result.</li>
         <li>Click a <strong>supermarket, subway stop, or search result</strong> for its info too.</li>
       </ul>
       <p><strong>Right panel — plan the week</strong></p>
@@ -145,6 +152,6 @@
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
           integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
-  <script src="app.js?v=18"></script>
+  <script src="app.js?v=19"></script>
 </body>
 </html>

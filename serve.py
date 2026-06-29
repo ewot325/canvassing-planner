@@ -22,7 +22,23 @@ import sys
 
 PORT = 8765
 ROOT = os.path.dirname(os.path.abspath(__file__))
-EXPORT = os.path.expanduser("~/bores-scheduling/scripts/export_fellow_availability.py")
+SCHED_SCRIPTS = os.path.expanduser("~/bores-scheduling/scripts")
+EXPORT = os.path.join(SCHED_SCRIPTS, "export_fellow_availability.py")
+PUSH_MEETING = os.path.join(SCHED_SCRIPTS, "push_meeting_point.py")
+# push_meeting_point.py needs supabase + the service key, so run it with the
+# scheduling project's venv (which has those) from the scripts dir (so its
+# config.py loads scripts/.env). Fall back to the system python if no venv.
+SCHED_PY = os.path.join(SCHED_SCRIPTS, "venv", "bin", "python")
+
+
+def _json_response(handler, payload, ok):
+    data = json.dumps(payload).encode("utf-8")
+    handler.send_response(200 if ok else 500)
+    handler.send_header("Content-Type", "application/json")
+    handler.send_header("Content-Length", str(len(data)))
+    handler.send_header("Cache-Control", "no-store")
+    handler.end_headers()
+    handler.wfile.write(data)
 
 
 class Handler(http.server.SimpleHTTPRequestHandler):
@@ -36,17 +52,31 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             body = {"ok": ok, "output": (r.stdout or "") + (r.stderr or "")}
         except Exception as e:  # noqa: BLE001 - report any failure to the browser
             ok, body = False, {"ok": False, "error": str(e)}
-        data = json.dumps(body).encode("utf-8")
-        self.send_response(200 if ok else 500)
-        self.send_header("Content-Type", "application/json")
-        self.send_header("Content-Length", str(len(data)))
-        self.send_header("Cache-Control", "no-store")
-        self.end_headers()
-        self.wfile.write(data)
+        _json_response(self, body, ok)
+
+    def _push_meeting(self):
+        length = int(self.headers.get("Content-Length", 0) or 0)
+        raw = self.rfile.read(length) if length else b"{}"
+        py = SCHED_PY if os.path.exists(SCHED_PY) else sys.executable
+        try:
+            r = subprocess.run([py, PUSH_MEETING], input=raw, capture_output=True,
+                               timeout=60, cwd=SCHED_SCRIPTS)
+            out = (r.stdout or b"").decode("utf-8").strip()
+            err = (r.stderr or b"").decode("utf-8").strip()
+            try:
+                body = json.loads(out.splitlines()[-1]) if out else {"ok": False, "error": err or "no output"}
+            except Exception:  # noqa: BLE001
+                body = {"ok": r.returncode == 0, "error": err or out}
+        except Exception as e:  # noqa: BLE001
+            body = {"ok": False, "error": str(e)}
+        _json_response(self, body, bool(body.get("ok")))
 
     def do_POST(self):
-        if self.path.split("?", 1)[0] == "/api/refresh-fellows":
+        path = self.path.split("?", 1)[0]
+        if path == "/api/refresh-fellows":
             return self._refresh()
+        if path == "/api/push-meeting":
+            return self._push_meeting()
         self.send_error(404, "Not found")
 
     def do_GET(self):

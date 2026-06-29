@@ -374,7 +374,17 @@ html, body {
 .rv-meet-results li { font-size: 12px; padding: 5px 7px; border-radius: 6px; cursor: pointer; }
 .rv-meet-results li:hover { background: var(--accent-soft); }
 .rv-meet-results .sub { color: var(--muted); }
-.rv-meet.set { display: flex; align-items: center; gap: 6px; background: #eef6ef; border: 1px solid #cfe7d3; border-radius: 7px; padding: 4px 8px; }
+.rv-meet.set { background: #eef6ef; border: 1px solid #cfe7d3; border-radius: 7px; padding: 5px 8px; }
+.rv-meet-top { display: flex; align-items: center; gap: 6px; }
+.rv-meet-send-row { display: flex; align-items: center; gap: 8px; margin-top: 5px; }
+.rv-meet-send { font-size: 11px; cursor: pointer; color: var(--accent); background: var(--panel); border: 1px solid var(--accent); border-radius: 7px; padding: 3px 9px; }
+.rv-meet-send:hover { background: var(--accent-soft); }
+.rv-meet-send:disabled { opacity: 0.6; cursor: default; }
+.rv-send-status { font-size: 11px; color: var(--muted); }
+.review-send { padding: 8px 16px 0; }
+.review-send button.primary { width: 100%; padding: 9px; font-size: 12px; font-weight: 700; cursor: pointer; color: #fff; background: var(--accent); border: none; border-radius: 8px; }
+.review-send button.primary:hover { filter: brightness(1.07); }
+.review-send-status { font-size: 11px; color: var(--muted); padding: 4px 2px 0; min-height: 14px; line-height: 1.35; }
 .rv-meet-label { flex: 1; font-size: 12px; }
 .rv-meet-change { font-size: 11px; cursor: pointer; color: var(--accent); background: none; border: none; }
 .rv-meet-clear { font-size: 12px; cursor: pointer; color: var(--muted); background: none; border: none; }

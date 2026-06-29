@@ -735,9 +735,10 @@
         var chips = items.map(function (it) { return '<span class="rv-chip">' + (it.icon ? escapeHtml(it.icon) + " " : "") + escapeHtml(it.label) + "</span>"; }).join("");
         var meet = getMeet(iso, sh), mh;
         if (meet) {
-          mh = '<div class="rv-meet set"><span class="rv-meet-label">📍 ' + escapeHtml(meet.label) + "</span>" +
+          mh = '<div class="rv-meet set"><div class="rv-meet-top"><span class="rv-meet-label">📍 ' + escapeHtml(meet.label) + "</span>" +
             '<button class="rv-meet-change" data-iso="' + iso + '" data-sh="' + sh + '">change</button>' +
-            '<button class="rv-meet-clear" data-iso="' + iso + '" data-sh="' + sh + '" title="Remove">✕</button></div>';
+            '<button class="rv-meet-clear" data-iso="' + iso + '" data-sh="' + sh + '" title="Remove">✕</button></div>' +
+            '<div class="rv-meet-send-row"><button class="rv-meet-send" data-iso="' + iso + '" data-sh="' + sh + '">Send to schedule</button><span class="rv-send-status"></span></div></div>';
         } else {
           mh = '<div class="rv-meet"><div class="rv-meet-row">' +
             '<input class="rv-meet-search" type="search" placeholder="Search a meeting place…" data-iso="' + iso + '" data-sh="' + sh + '" />' +
@@ -757,6 +758,16 @@
     Array.prototype.forEach.call(body.querySelectorAll(".rv-meet-clear"), function (b) { b.addEventListener("click", function () { meetReset(b); }); });
     Array.prototype.forEach.call(body.querySelectorAll(".rv-meet-change"), function (b) { b.addEventListener("click", function () { meetReset(b); }); });
     Array.prototype.forEach.call(body.querySelectorAll(".rv-meet-map"), function (b) { b.addEventListener("click", function () { pickMeetOnMap(b.getAttribute("data-iso"), b.getAttribute("data-sh")); }); });
+    Array.prototype.forEach.call(body.querySelectorAll(".rv-meet-send"), function (b) {
+      b.addEventListener("click", function () {
+        var status = b.parentNode.querySelector(".rv-send-status");
+        b.disabled = true; if (status) status.textContent = "Sending…";
+        pushMeeting(b.getAttribute("data-iso"), b.getAttribute("data-sh")).then(function (res) {
+          b.disabled = false;
+          if (status) status.textContent = res && res.ok ? "✓ on schedule" : "✗ " + ((res && res.error) || "failed");
+        });
+      });
+    });
     Array.prototype.forEach.call(body.querySelectorAll(".rv-meet-search"), function (inp) {
       var timer = null, results = inp.parentNode.parentNode.querySelector(".rv-meet-results");
       inp.addEventListener("focus", function () { fitShift(inp.getAttribute("data-iso"), inp.getAttribute("data-sh")); });
@@ -823,6 +834,29 @@
       refreshDistricts();
     }
     renderMeetMarkers();
+  }
+  // Push meeting points to the scheduling site (via serve.py -> push_meeting_point.py).
+  function shiftKeyFor(iso, sh) { return dowName(parseISO(iso)).toLowerCase() + "_inperson_" + sh.toLowerCase(); }
+  function pushMeeting(iso, sh) {
+    var m = getMeet(iso, sh); if (!m) return Promise.resolve({ ok: false, error: "no meeting point" });
+    return fetch("/api/push-meeting", { method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ week_start: isoOf(state.weekStart), shift_key: shiftKeyFor(iso, sh), label: m.label, lat: m.lat, lng: m.lng }) })
+      .then(function (r) { return r.json(); }).catch(function () { return { ok: false, error: "offline" }; });
+  }
+  function setReviewSendStatus(msg) { var el = document.getElementById("review-send-status"); if (el) el.textContent = msg; }
+  function sendAllMeetings() {
+    var jobs = [];
+    weekDays().forEach(function (d) { var iso = isoOf(d); ["AM", "PM"].forEach(function (sh) { if (getMeet(iso, sh)) jobs.push({ iso: iso, sh: sh }); }); });
+    if (!jobs.length) { setReviewSendStatus("Set at least one meeting point first."); return; }
+    setReviewSendStatus("Sending " + jobs.length + " meeting point" + (jobs.length > 1 ? "s" : "") + "…");
+    Promise.all(jobs.map(function (j) { return pushMeeting(j.iso, j.sh); })).then(function (rs) {
+      var ok = rs.filter(function (r) { return r && r.ok; }).length;
+      var firstErr = (rs.filter(function (r) { return r && !r.ok; })[0] || {}).error;
+      setReviewSendStatus(ok === jobs.length
+        ? "✓ Sent all " + ok + " to the schedule."
+        : "Sent " + ok + " of " + jobs.length + (firstErr ? " — " + firstErr : "") + " (is the scheduling project on this Mac?)");
+      renderReview();
+    });
   }
 
   // ====================================================================
@@ -1022,6 +1056,7 @@
     document.getElementById("review-close").addEventListener("click", closeReview);
     document.getElementById("review-print").addEventListener("click", printPlan);
     document.getElementById("review-copy").addEventListener("click", copyPlan);
+    document.getElementById("review-sendall").addEventListener("click", sendAllMeetings);
     document.getElementById("plan-clear").addEventListener("click", function () { if (!confirm("Remove everything from this week's plan?")) return; weekDays().forEach(function (d) { delete state.plan[isoOf(d)]; }); savePlan(); refreshDistricts(); renderPlan(); });
 
     var modal = document.getElementById("info-modal");

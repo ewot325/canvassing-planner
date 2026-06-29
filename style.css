@@ -390,6 +390,9 @@ html, body {
   display: none;
 }
 .meet-banner.show { display: block; }
+/* slide the bottom-right map controls (legend, attribution) clear of the review panel */
+.leaflet-bottom.leaflet-right { transition: right 0.22s ease; }
+body.review-open .leaflet-bottom.leaflet-right { right: 392px; }
 
 /* ---- footer ---- */
 .panel-footer { padding: 8px 14px; border-top: 1px solid var(--border); font-size: 11px; color: var(--muted); }

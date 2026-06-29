@@ -703,6 +703,24 @@
       });
     });
   }
+  // Bounds covering all the districts in one shift (used to frame the map when
+  // you start setting that shift's meeting point).
+  function shiftBounds(iso, sh) {
+    var lls = [];
+    shiftArr(iso, sh, false).forEach(function (it) {
+      if (it.k !== "ed") return;
+      var f = edFeature(it.id);
+      if (f) { try { var b = L.geoJSON(f).getBounds(); lls.push(b.getSouthWest(), b.getNorthEast()); return; } catch (e) {} }
+      var c = edCentroid[String(it.id)]; if (c) lls.push([c.lat, c.lng]);
+    });
+    return lls.length ? L.latLngBounds(lls) : null;
+  }
+  // keep the districts out from under the open review panel
+  function panelOffset() { var p = document.getElementById("review-panel"); return (p && p.classList.contains("open")) ? Math.round(p.getBoundingClientRect().width) + 30 : 70; }
+  function fitShift(iso, sh) {
+    var b = shiftBounds(iso, sh); if (!b) return;
+    try { map.fitBounds(b, { paddingTopLeft: [70, 70], paddingBottomRight: [panelOffset(), 70], maxZoom: 16 }); } catch (e) {}
+  }
   function renderReview() {
     var wk = document.getElementById("review-week"); if (wk) wk.textContent = document.getElementById("week-label").textContent;
     var body = document.getElementById("review-body"); if (!body) return;
@@ -741,6 +759,7 @@
     Array.prototype.forEach.call(body.querySelectorAll(".rv-meet-map"), function (b) { b.addEventListener("click", function () { pickMeetOnMap(b.getAttribute("data-iso"), b.getAttribute("data-sh")); }); });
     Array.prototype.forEach.call(body.querySelectorAll(".rv-meet-search"), function (inp) {
       var timer = null, results = inp.parentNode.parentNode.querySelector(".rv-meet-results");
+      inp.addEventListener("focus", function () { fitShift(inp.getAttribute("data-iso"), inp.getAttribute("data-sh")); });
       inp.addEventListener("input", function () {
         var q = inp.value.trim(); clearTimeout(timer);
         if (q.length < 3) { results.innerHTML = ""; return; }
@@ -761,7 +780,8 @@
   }
   function pickMeetOnMap(iso, sh) {
     meetPick = { iso: iso, sh: sh };
-    document.getElementById("review-panel").classList.remove("open");
+    document.getElementById("review-panel").classList.remove("open"); // slide out first so the fit uses the full map
+    fitShift(iso, sh);
     var banner = document.getElementById("meet-banner");
     banner.textContent = "Click the map to set the meeting point for " + meetLabel(iso, sh) + "  (Esc to cancel)";
     banner.classList.add("show");
@@ -791,10 +811,12 @@
     }
     renderReview(); renderMeetMarkers();
     document.getElementById("review-panel").classList.add("open");
+    document.body.classList.add("review-open");
   }
   function closeReview() {
     reviewOpen = false;
     document.getElementById("review-panel").classList.remove("open");
+    document.body.classList.remove("review-open");
     if (reviewSetOverview) {
       reviewSetOverview = false; state.weekOverview = false;
       var b = document.getElementById("week-overview"); if (b) { b.textContent = "Show week overview"; b.classList.remove("on"); }

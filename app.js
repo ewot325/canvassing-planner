@@ -514,8 +514,8 @@
   // Auto-fill every EMPTY in-person shift this week with a geographic cluster of
   // top-ranked districts (by the selected goal), each cluster sized to cover ~a
   // team's walkable turf for one shift. Never touches shifts you've already filled.
-  var AUTOPLAN_TARGET_ACRES = 20; // roughly one 4-hour shift of walkable ground
-  var AUTOPLAN_MAX_PER_SHIFT = 6;
+  var AUTOPLAN_TARGET_ACRES = 30; // enough turf for a group of ~20-30 canvassers per shift
+  var AUTOPLAN_MAX_PER_SHIFT = 8;
   function autoPlanWeek() {
     var msg = document.getElementById("rec-autoplan-msg");
     var g = state.geo.districts; if (!g || !g.features) return;
@@ -880,7 +880,6 @@
         buildDistrictIndex(districts.features);
         buildDistrictLayer(districts);
         toggleLines(true); // default: ED + AD boundary lines on
-        toggleLabels(true); // default: ED/AD labels on
         loadEvents();
         map.invalidateSize();
         try { map.fitBounds(districtLayer.getBounds(), { padding: [20, 20], animate: false }); } catch (e) {}

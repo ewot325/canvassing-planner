@@ -6,7 +6,7 @@
   <title>Canvassing Planner — Locations Map</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
         integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
-  <link rel="stylesheet" href="style.css?v=19" />
+  <link rel="stylesheet" href="style.css?v=20" />
 </head>
 <body>
   <div id="app">
@@ -80,6 +80,17 @@
         <span class="fellows-status" id="fellows-status"></span>
         <button id="fellows-refresh" type="button" title="Pull the latest assigned-volunteer counts from the staff schedule">↻ Update assigned counts</button>
       </div>
+      <div class="rec-card">
+        <div class="rec-head">
+          <span class="rec-title">🎯 Top targets this week</span>
+          <select id="rec-mode" class="rec-mode" title="What to optimize for">
+            <option value="persuasion">Persuasion</option>
+            <option value="gotv">Turnout (GOTV)</option>
+          </select>
+        </div>
+        <ul class="rec-list" id="rec-list"></ul>
+        <p class="rec-note">Ranked by goal, minus districts you've already canvassed. Click a district to zoom; “Add” puts it in the selected shift.</p>
+      </div>
       <p class="plan-hint">
         Pick a <strong>shift</strong> below, then <strong>click anything on the map</strong> — a
         district, supermarket, subway stop, or a search result — and choose <em>Add to shift</em>
@@ -152,6 +163,6 @@
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
           integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
-  <script src="app.js?v=19"></script>
+  <script src="app.js?v=20"></script>
 </body>
 </html>

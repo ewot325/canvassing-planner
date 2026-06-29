@@ -247,6 +247,26 @@ html, body {
   display: flex; align-items: center; gap: 8px;
   padding: 12px 14px; border-bottom: 1px solid var(--border);
 }
+/* recommended targets card */
+.rec-card { margin: 10px 14px 0; border: 1px solid var(--border); border-radius: 10px; background: var(--panel); overflow: hidden; }
+.rec-head { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-bottom: 1px solid var(--border); background: var(--panel-2); }
+.rec-head .rec-title { flex: 1; font-size: 13px; font-weight: 700; }
+.rec-head .rec-mode { font-size: 12px; padding: 3px 6px; border: 1px solid var(--border); border-radius: 7px; background: var(--panel); color: inherit; }
+.rec-list { list-style: none; margin: 0; padding: 4px; max-height: 240px; overflow-y: auto; }
+.rec-item { padding: 7px 8px; border-radius: 8px; }
+.rec-item + .rec-item { border-top: 1px solid var(--border); }
+.rec-main { display: flex; align-items: baseline; gap: 7px; }
+.rec-rank { font-size: 11px; font-weight: 700; color: var(--accent); min-width: 14px; }
+.rec-ed { font-size: 12px; font-weight: 600; cursor: pointer; }
+.rec-ed:hover { text-decoration: underline; }
+.rec-inplan { font-size: 10px; color: var(--muted); font-weight: 500; }
+.rec-stats { font-size: 11px; color: var(--muted); margin: 2px 0 5px 21px; }
+.rec-add { margin-left: 21px; font-size: 11px; cursor: pointer; color: var(--accent); background: var(--panel); border: 1px solid var(--border); border-radius: 7px; padding: 3px 8px; }
+.rec-add:hover { background: var(--panel-2); }
+.rec-add.in { color: #0a6b3b; border-color: #b6e0c7; background: #e4f5ea; }
+.rec-empty, .rec-note { font-size: 11px; color: var(--muted); }
+.rec-empty { padding: 8px; list-style: none; }
+.rec-note { margin: 0; padding: 6px 10px 8px; border-top: 1px solid var(--border); line-height: 1.35; }
 .week-nav button {
   width: 30px; height: 30px; border: 1px solid var(--border);
   background: var(--panel); border-radius: 8px; font-size: 16px; cursor: pointer; color: var(--text);

@@ -59,7 +59,7 @@
     geo: {}, edProps: {},
     shadingMode: "none",
     weekStart: null, activeDay: null, activeShift: "AM", plan: {},
-    pcts: {}, wx: null, events: [], avail: null,
+    pcts: {}, wx: null, events: [], avail: null, recMode: "persuasion",
   };
 
   var map, legend, districtLayer, R, searchMarker = null, searchTimer = null, searchAbort = null;
@@ -449,8 +449,55 @@
     b.innerHTML = "Now adding to <strong>" + dowName(d) + " " + prettyDate(d) + " · " + state.activeShift + " (" + shiftTime(d, state.activeShift) + ")</strong>";
   }
   function renderWeekLabel() { var days = weekDays(); document.getElementById("week-label").textContent = "Week of " + prettyDate(days[0]) + " – " + prettyDate(days[6]); }
+  // Is this ED already placed in ANY shift this week?
+  function edInWeekPlan(ed) {
+    return weekDays().some(function (d) {
+      var iso = isoOf(d);
+      return ["AM", "PM"].some(function (sh) {
+        return shiftArr(iso, sh, false).some(function (x) { return x.k === "ed" && x.id === ed; });
+      });
+    });
+  }
+  // Recommended top targets for the week, by the selected goal (persuasion/gotv).
+  // Ranking already accounts for prior canvassing coverage (person-days) and,
+  // for GOTV, registered Democrats — see districtMetric().
+  function renderRecommendations() {
+    var el = document.getElementById("rec-list"); if (!el) return;
+    var g = state.geo.districts;
+    if (!g || !g.features) { el.innerHTML = "<li class='rec-empty'>Loading districts…</li>"; return; }
+    var mode = state.recMode;
+    var ranked = g.features.map(function (f) { return { p: f.properties, v: districtMetric(f.properties, mode) }; })
+      .filter(function (x) { return x.v > 0; })
+      .sort(function (a, b) { return b.v - a.v; }).slice(0, 8);
+    var active = activeEdSet();
+    el.innerHTML = ranked.map(function (x, i) {
+      var p = x.p, ed = String(p.elect_dist), c = edCentroid[ed] || { lat: 0, lng: 0 };
+      var regDem = num(p.reg_dem_2024);
+      var cov = num(p.distance_adjusted_weighted_person_days) || num(p.weighted_person_days);
+      var topp = Math.max(1, Math.round((1 - percentile(mode, x.v)) * 100));
+      var covTxt = cov > 0 ? fmt(cov) + " person-days canvassed" : "never canvassed";
+      var inActive = active.has(ed), inWeek = edInWeekPlan(ed);
+      var flag = inActive ? "" : (inWeek ? " <span class='rec-inplan'>• already in plan</span>" : "");
+      return '<li class="rec-item">' +
+        '<div class="rec-main"><span class="rec-rank">' + (i + 1) + '</span>' +
+        '<span class="rec-ed" data-lat="' + c.lat + '" data-lng="' + c.lng + '">' + edLabel(ed) + "</span>" + flag + "</div>" +
+        '<div class="rec-stats">' + commas(regDem) + " reg. Dems · " + covTxt + " · top " + topp + "%</div>" +
+        '<button class="rec-add' + (inActive ? " in" : "") + '" data-id="' + escAttr(ed) + '" data-lat="' + c.lat + '" data-lng="' + c.lng +
+        '" data-label="' + escAttr("ED " + edShort(ed)) + '">' +
+        (inActive ? "✓ In " + activeShiftLabel() : "➕ Add to " + activeShiftLabel()) + "</button></li>";
+    }).join("");
+    Array.prototype.forEach.call(el.querySelectorAll(".rec-ed"), function (s) {
+      s.addEventListener("click", function () { var la = +s.getAttribute("data-lat"), ln = +s.getAttribute("data-lng"); if (la && ln) map.setView([la, ln], Math.max(map.getZoom(), 15)); });
+    });
+    Array.prototype.forEach.call(el.querySelectorAll(".rec-add"), function (btn) {
+      btn.addEventListener("click", function () {
+        toggleItem({ k: "ed", id: btn.getAttribute("data-id"), label: btn.getAttribute("data-label"),
+          lat: +btn.getAttribute("data-lat"), lng: +btn.getAttribute("data-lng"), icon: "🗳" });
+      });
+    });
+  }
   function renderPlan() {
-    renderWeekLabel(); renderShiftBanner(); renderWeather(); renderFellowStatus();
+    renderWeekLabel(); renderShiftBanner(); renderWeather(); renderFellowStatus(); renderRecommendations();
     var container = document.getElementById("plan-days");
     container.innerHTML = weekDays().map(function (d) {
       var iso = isoOf(d);
@@ -691,6 +738,7 @@
     document.getElementById("lyr-groc").addEventListener("change", function (e) { toggleGroc(e.target.checked); });
     document.getElementById("week-prev").addEventListener("click", function () { state.weekStart = addDays(state.weekStart, -7); state.activeDay = isoOf(state.weekStart); refreshDistricts(); renderPlan(); loadEvents(); });
     document.getElementById("week-next").addEventListener("click", function () { state.weekStart = addDays(state.weekStart, 7); state.activeDay = isoOf(state.weekStart); refreshDistricts(); renderPlan(); loadEvents(); });
+    document.getElementById("rec-mode").addEventListener("change", function (e) { state.recMode = e.target.value; renderRecommendations(); });
     document.getElementById("fellows-refresh").addEventListener("click", refreshFellows);
     document.getElementById("plan-print").addEventListener("click", printPlan);
     document.getElementById("plan-copy").addEventListener("click", copyPlan);

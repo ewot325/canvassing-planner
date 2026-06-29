@@ -6,7 +6,7 @@
   <title>Canvassing Planner — Locations Map</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
         integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
-  <link rel="stylesheet" href="style.css?v=23" />
+  <link rel="stylesheet" href="style.css?v=25" />
 </head>
 <body>
   <div id="app">
@@ -60,7 +60,7 @@
         <ul class="rec-list" id="rec-list"></ul>
         <button id="rec-autoplan" class="rec-autoplan" title="Fill every empty shift this week with a nearby cluster of top districts">✨ Auto-plan the week</button>
         <div class="rec-autoplan-msg" id="rec-autoplan-msg"></div>
-        <p class="rec-note">Ranked by goal, minus districts you've already canvassed. Click a district to zoom in and highlight it; “Add” puts it in the selected shift. <strong>Auto-plan</strong> fills empty shifts with nearby clusters of top districts.</p>
+        <p class="rec-note">Ranked by your goal; districts you've already canvassed are weighted down (not removed). Click a district to highlight it; “Add” puts it in the selected shift. <strong>Auto-plan</strong> fills empty shifts with nearby clusters.</p>
       </div>
 
       <div class="info-cards">
@@ -116,8 +116,9 @@
 
       <h3>Finding the best districts to canvass</h3>
       <p>Two “🎯 targeting” shadings highlight the election districts that are the best use of
-        canvassing time. Both <strong>subtract the canvassing you've already done</strong>, so the
-        map always points you at fresh turf. Pick whichever matches your goal for the week:</p>
+        canvassing time. Both <strong>weigh down places you've already canvassed</strong> (the more
+        prior canvassing, the lower the priority — though a very high-value district can still rank
+        well). Pick whichever matches your goal for the week:</p>
       <ul>
         <li><strong>🎯 Persuasion targets</strong> — districts where <strong>lots of people
           actually vote</strong> but the team <strong>hasn't canvassed much</strong>. Best when the
@@ -173,6 +174,6 @@
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
           integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
-  <script src="app.js?v=23"></script>
+  <script src="app.js?v=25"></script>
 </body>
 </html>

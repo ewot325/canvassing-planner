@@ -55,7 +55,7 @@
     geo: {}, edProps: {},
     shadingMode: "none",
     weekStart: null, activeDay: null, activeShift: "AM", plan: {},
-    pcts: {},
+    pcts: {}, wx: null, events: [],
   };
 
   var map, legend, districtLayer, R, searchMarker = null, searchTimer = null, searchAbort = null;
@@ -341,7 +341,7 @@
     searchMarker.bindPopup('<div class="popup-title">📍 ' + escapeHtml(label) + "</div>" +
       addBtnHtml({ k: "pt", id: "pin:" + lat.toFixed(5) + "," + lng.toFixed(5), label: label, lat: lat, lng: lng, icon: "📍" }) +
       '<button class="pin-remove">✕ Remove this pin</button>', { maxWidth: 300 });
-    map.setView([lat, lng], 16);
+    map.setView([lat, lng], 16, { animate: false });
     searchMarker.openPopup();
   }
 
@@ -370,7 +370,7 @@
   }
   function renderWeekLabel() { var days = weekDays(); document.getElementById("week-label").textContent = "Week of " + prettyDate(days[0]) + " – " + prettyDate(days[6]); }
   function renderPlan() {
-    renderWeekLabel(); renderShiftBanner();
+    renderWeekLabel(); renderShiftBanner(); renderWeather();
     var container = document.getElementById("plan-days");
     container.innerHTML = weekDays().map(function (d) {
       var iso = isoOf(d);
@@ -518,21 +518,26 @@
       var d = parseISO(e.date);
       return '<li class="ev-row" data-i="' + i + '"><span class="ev-d">' + dowName(d) + " " + prettyDate(d) + "</span>" +
         '<span class="ev-n">' + evIcon(e.type) + " " + escapeHtml(e.name) + "</span></li>";
-    }).join("") + "</ul>";
+    }).join("") + '</ul><div class="ev-note" id="ev-note"></div>';
     Array.prototype.forEach.call(card.querySelectorAll(".ev-row"), function (li) {
       li.addEventListener("click", function () { focusEvent(evs[+li.getAttribute("data-i")]); });
     });
   }
   function focusEvent(e) {
     if (!e) return;
-    if (!isFinite(e.lat) || !isFinite(e.lng)) { alert(e.name + "\n" + (e.loc || "") + "\n(couldn't pinpoint on the map)"); return; }
+    var note = document.getElementById("ev-note");
+    var d = parseISO(e.date);
+    if (e.lat == null || e.lng == null) {  // no reliable coordinate -> show its location inline
+      if (note) note.innerHTML = "📍 <strong>" + escapeHtml(e.name) + "</strong> — " + escapeHtml(e.loc || "") + " <span class='sub'>(couldn't pin exactly)</span>";
+      return;
+    }
+    if (note) note.textContent = "";
     if (eventMarker) map.removeLayer(eventMarker);
     eventMarker = L.marker([e.lat, e.lng], { icon: pinIcon("event-pin", "#b8860b", "📅"), pane: "pane-search" }).addTo(map);
-    var d = parseISO(e.date);
     eventMarker.bindPopup('<div class="popup-title">' + evIcon(e.type) + " " + escapeHtml(e.name) + "</div><div class='sub'>" +
       escapeHtml(e.type) + " · " + dowName(d) + " " + prettyDate(d) + "</div><div class='popup-dates'>" + escapeHtml(e.loc || "") + "</div>" +
       addBtnHtml({ k: "pt", id: "evt:" + e.lat.toFixed(5) + "," + e.lng.toFixed(5), label: e.name + " (" + prettyDate(d) + ")", lat: e.lat, lng: e.lng, icon: "📅" }), { maxWidth: 280 });
-    map.setView([e.lat, e.lng], 16);
+    map.setView([e.lat, e.lng], 16, { animate: false });
     eventMarker.openPopup();
   }
 
@@ -541,7 +546,7 @@
   // ====================================================================
   var WX = "https://api.open-meteo.com/v1/forecast?latitude=40.78&longitude=-73.96" +
     "&current=temperature_2m,weather_code&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max" +
-    "&temperature_unit=fahrenheit&timezone=America%2FNew_York&forecast_days=6";
+    "&temperature_unit=fahrenheit&timezone=America%2FNew_York&forecast_days=16";
   function wxInfo(code) {
     code = num(code);
     if (code === 0) return { i: "☀️", t: "Clear" };
@@ -555,27 +560,24 @@
     if (code <= 86) return { i: "🌨️", t: "Snow showers" };
     return { i: "⛈️", t: "Thunderstorms" };
   }
-  function renderWeather(card, d) {
-    var cur = d.current || {}, day = d.daily || {};
-    var cw = wxInfo(cur.weather_code);
-    var html = '<div class="ic-title">NYC weather</div>' +
-      '<div class="wx-current"><span class="wx-temp">' + Math.round(num(cur.temperature_2m)) + "°</span>" +
-      '<span class="wx-cond">' + cw.i + " " + cw.t + "</span></div><div class='wx-days'>";
-    var times = day.time || [];
-    for (var i = 0; i < Math.min(times.length, 5); i++) {
-      var w = wxInfo(day.weather_code[i]);
-      var dn = i === 0 ? "Today" : DAY_NAMES[(parseISO(times[i]).getDay() + 6) % 7];
-      var pp = num(day.precipitation_probability_max[i]);
-      html += "<div class='wx-day'><span class='d'>" + dn + "</span><span class='i'>" + w.i + "</span>" +
-        "<span class='t'>" + Math.round(num(day.temperature_2m_max[i])) + "°/" + Math.round(num(day.temperature_2m_min[i])) + "°</span>" +
-        "<span class='p" + (pp < 20 ? " dry" : "") + "'>💧" + pp + "%</span></div>";
-    }
-    card.innerHTML = html + "</div>";
+  // Show the forecast for the day currently being planned (state.activeDay).
+  function renderWeather() {
+    var card = document.getElementById("weather-card"); if (!card || !state.wx) return;
+    var day = state.wx.daily || {}, times = day.time || [], idx = times.indexOf(state.activeDay);
+    var dd = parseISO(state.activeDay);
+    var head = '<div class="ic-title">Weather · ' + dowName(dd) + " " + prettyDate(dd) + "</div>";
+    if (idx === -1) { card.innerHTML = head + '<div class="ic-muted">Forecast not available this far ahead yet.</div>'; return; }
+    var w = wxInfo(day.weather_code[idx]);
+    var hi = Math.round(num(day.temperature_2m_max[idx])), lo = Math.round(num(day.temperature_2m_min[idx])), pp = num(day.precipitation_probability_max[idx]);
+    card.innerHTML = head +
+      '<div class="wx-current"><span class="wx-temp">' + hi + "°</span>" +
+      '<span class="wx-cond">' + w.i + " " + w.t +
+      "<br><span class='sub'>High " + hi + "° · Low " + lo + "° · 💧" + pp + "% rain</span></span></div>";
   }
   function initWeather() {
     var card = document.getElementById("weather-card"); if (!card) return;
     fetch(WX).then(function (r) { return r.json(); })
-      .then(function (d) { renderWeather(card, d); })
+      .then(function (d) { state.wx = d; renderWeather(); })
       .catch(function () { card.innerHTML = '<div class="ic-title">NYC weather</div><div class="ic-muted">Weather unavailable right now.</div>'; });
   }
 

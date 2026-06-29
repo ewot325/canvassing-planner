@@ -150,6 +150,8 @@ html, body {
 .ev-row .ev-d { display: block; font-size: 10.5px; color: var(--muted); font-weight: 700; }
 .ev-row .ev-n { display: block; font-size: 12px; }
 .event-pin { width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; border: 2px solid #fff; box-shadow: 0 1px 4px rgba(0,0,0,0.4); }
+.ev-note { font-size: 11px; color: var(--text); margin-top: 6px; line-height: 1.4; }
+.ev-note:empty { margin: 0; }
 
 /* richer legend for categorical layers */
 .legend .cat { display: flex; align-items: center; gap: 6px; margin: 2px 0; }

@@ -63,6 +63,7 @@
   };
 
   var map, legend, districtLayer, R, searchMarker = null, searchTimer = null, searchAbort = null;
+  var edHighlight = null, highlightRenderer = null;
   var overlay = { lines: null, labels: null, hoods: null, subway: null, polls: null, early: null, groc: null };
   var edCentroid = {};
   var maxBallots = 1, maxCoverage = 1, maxOpportunity = 1;
@@ -213,6 +214,21 @@
     }).addTo(map);
   }
   function refreshDistricts() { if (!districtLayer) return; districtLayer.setStyle(districtStyle); updateLegend(); }
+  function edFeature(ed) {
+    var fs = state.geo.districts && state.geo.districts.features; if (!fs) return null;
+    for (var i = 0; i < fs.length; i++) if (String(fs[i].properties.elect_dist) === String(ed)) return fs[i];
+    return null;
+  }
+  // Center, zoom in, and draw a bright outline around an ED so it's easy to spot.
+  function highlightEd(ed) {
+    var feat = edFeature(ed); if (!feat) return;
+    if (!highlightRenderer) highlightRenderer = L.svg({ pane: "pane-highlight" });
+    if (edHighlight) { map.removeLayer(edHighlight); edHighlight = null; }
+    edHighlight = L.geoJSON(feat, { renderer: highlightRenderer, interactive: false,
+      style: { color: "#ff6a00", weight: 4, opacity: 1, fill: true, fillColor: "#ff6a00", fillOpacity: 0.08, className: "ed-highlight" } }).addTo(map);
+    try { map.fitBounds(edHighlight.getBounds(), { padding: [70, 70], maxZoom: 16, animate: true }); }
+    catch (e) { var c = edCentroid[String(ed)]; if (c) map.setView([c.lat, c.lng], 16); }
+  }
 
   // ====================================================================
   //  POINT OVERLAYS  (each marker's popup has an Add-to-shift button)
@@ -479,14 +495,14 @@
       var flag = inActive ? "" : (inWeek ? " <span class='rec-inplan'>• already in plan</span>" : "");
       return '<li class="rec-item">' +
         '<div class="rec-main"><span class="rec-rank">' + (i + 1) + '</span>' +
-        '<span class="rec-ed" data-lat="' + c.lat + '" data-lng="' + c.lng + '">' + edLabel(ed) + "</span>" + flag + "</div>" +
+        '<span class="rec-ed" data-ed="' + escAttr(ed) + '">' + edLabel(ed) + "</span>" + flag + "</div>" +
         '<div class="rec-stats">' + commas(regDem) + " reg. Dems · " + covTxt + " · top " + topp + "%</div>" +
         '<button class="rec-add' + (inActive ? " in" : "") + '" data-id="' + escAttr(ed) + '" data-lat="' + c.lat + '" data-lng="' + c.lng +
         '" data-label="' + escAttr("ED " + edShort(ed)) + '">' +
         (inActive ? "✓ In " + activeShiftLabel() : "➕ Add to " + activeShiftLabel()) + "</button></li>";
     }).join("");
     Array.prototype.forEach.call(el.querySelectorAll(".rec-ed"), function (s) {
-      s.addEventListener("click", function () { var la = +s.getAttribute("data-lat"), ln = +s.getAttribute("data-lng"); if (la && ln) map.setView([la, ln], Math.max(map.getZoom(), 15)); });
+      s.addEventListener("click", function () { highlightEd(s.getAttribute("data-ed")); });
     });
     Array.prototype.forEach.call(el.querySelectorAll(".rec-add"), function (btn) {
       btn.addEventListener("click", function () {
@@ -709,7 +725,7 @@
   // ---- init ------------------------------------------------------------
   function makePanes() {
     // pane-labels sits below Leaflet's tooltipPane (z 650) so the hover banner covers the labels.
-    [["pane-groc", 610], ["pane-early", 615], ["pane-polls", 620], ["pane-search", 630], ["pane-labels", 640]].forEach(function (d) { map.createPane(d[0]); map.getPane(d[0]).style.zIndex = d[1]; });
+    [["pane-groc", 610], ["pane-early", 615], ["pane-polls", 620], ["pane-search", 630], ["pane-labels", 640], ["pane-highlight", 645]].forEach(function (d) { map.createPane(d[0]); map.getPane(d[0]).style.zIndex = d[1]; });
     R = L.canvas({ padding: 0.5 });
   }
   function updateZoomClass() {

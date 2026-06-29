@@ -133,6 +133,9 @@ html, body {
 }
 .maplabel::before { display: none; }
 .ed-label { font-size: 10px; color: #2a3a4d; text-shadow: 0 0 2px #fff, 0 0 2px #fff, 0 0 3px #fff; }
+/* highlighted ED outline (clicked from Top targets) — pulses a few times then holds */
+.ed-highlight { animation: edHi 0.9s ease-in-out 3; }
+@keyframes edHi { 0%, 100% { stroke-opacity: 1; } 50% { stroke-opacity: 0.3; } }
 
 /* info cards (weather, calendar, …) */
 .info-cards { padding: 12px 14px 0; display: flex; flex-direction: column; gap: 10px; }

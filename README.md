@@ -37,6 +37,8 @@ calculated and how to use the site.
 - **District lines (ED & AD)** (on by default) — thin lines = election districts,
   thick navy lines = assembly-district divisions. Stay visible under any shading and
   at every zoom level.
+- **District labels (ED & AD)** — assembly-district numbers always show; election-
+  district numbers appear once you zoom in.
 - **Neighborhoods** — labeled neighborhood areas for orientation.
 - **Subway stops** — only the stops inside the district; colored by train line
   (official MTA colors); station names appear when you zoom in.
@@ -45,10 +47,10 @@ calculated and how to use the site.
 - **Early voting sites** — purple **EV** pins.
 - **Supermarkets** — 🛒 pins for high-foot-traffic canvassing spots.
 
-## Right panel
+## Weather
 
-Shows a live **NYC weather** card (current conditions + a 5-day forecast with rain
-chances, via the free Open-Meteo service) above the week planner.
+The left panel shows a live **NYC weather** card (current conditions + a 5-day
+forecast with rain chances, via the free Open-Meteo service).
 
 ## Planning a week (right panel)
 

@@ -116,7 +116,17 @@ html, body {
   background: var(--accent-soft); border-radius: 8px; padding: 8px 10px; line-height: 1.4;
 }
 
-/* right-panel info cards (weather, calendar, …) */
+/* district number labels on the map */
+.maplabel {
+  background: transparent; border: none; box-shadow: none; pointer-events: none;
+  text-align: center; white-space: nowrap; font-weight: 800;
+}
+.maplabel::before { display: none; }
+.ad-label { font-size: 13px; color: #0e2036; text-shadow: 0 0 3px #fff, 0 0 3px #fff, 0 0 4px #fff; }
+.ed-label { font-size: 10px; color: #3a4d63; text-shadow: 0 0 2px #fff, 0 0 2px #fff, 0 0 3px #fff; display: none; }
+.leaflet-container.show-ed-labels .ed-label { display: block; }
+
+/* info cards (weather, calendar, …) */
 .info-cards { padding: 12px 14px 0; display: flex; flex-direction: column; gap: 10px; }
 .info-card { border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; background: var(--panel); }
 .ic-title { font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 6px; }

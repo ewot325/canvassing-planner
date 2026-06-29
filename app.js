@@ -59,7 +59,7 @@
   };
 
   var map, legend, districtLayer, R, searchMarker = null, searchTimer = null, searchAbort = null;
-  var overlay = { lines: null, hoods: null, subway: null, polls: null, early: null, groc: null };
+  var overlay = { lines: null, labels: null, hoods: null, subway: null, polls: null, early: null, groc: null };
   var edCentroid = {};
   var maxBallots = 1, maxCoverage = 1, maxOpportunity = 1;
   var TODAY = startOfDay(new Date());
@@ -210,6 +210,25 @@
     // AD division lines (thick, dark navy) from the dissolved boundaries
     ensureData("adlines").then(function (g) {
       L.geoJSON(g, { renderer: R, interactive: false, style: { fill: false, color: "#14253a", weight: 2.6, opacity: 1 } }).addTo(overlay.lines);
+    });
+  }
+  // ED + AD number labels (one toggle). AD labels always show; ED labels only when zoomed in.
+  function toggleLabels(on) {
+    if (!on) { if (overlay.labels) map.removeLayer(overlay.labels); return; }
+    if (overlay.labels) { overlay.labels.addTo(map); return; }
+    if (!state.geo.districts) return;
+    overlay.labels = L.layerGroup().addTo(map);
+    var adSum = {}, adCnt = {};
+    Object.keys(edCentroid).forEach(function (ed) {
+      var p = state.edProps[ed]; if (!p) return; var c = edCentroid[ed], ad = p.assembly_district;
+      adSum[ad] = adSum[ad] || { lat: 0, lng: 0 }; adSum[ad].lat += c.lat; adSum[ad].lng += c.lng; adCnt[ad] = (adCnt[ad] || 0) + 1;
+      L.marker([c.lat, c.lng], { pane: "pane-labels", interactive: false, keyboard: false,
+        icon: L.divIcon({ className: "maplabel ed-label", html: String(p.election_district), iconSize: [26, 12], iconAnchor: [13, 6] }) }).addTo(overlay.labels);
+    });
+    Object.keys(adSum).forEach(function (ad) {
+      var n = adCnt[ad];
+      L.marker([adSum[ad].lat / n, adSum[ad].lng / n], { pane: "pane-labels", interactive: false, keyboard: false,
+        icon: L.divIcon({ className: "maplabel ad-label", html: "AD " + ad, iconSize: [46, 16], iconAnchor: [23, 8] }) }).addTo(overlay.labels);
     });
   }
   function toggleHoods(on) {
@@ -447,10 +466,14 @@
 
   // ---- init ------------------------------------------------------------
   function makePanes() {
-    [["pane-groc", 610], ["pane-early", 615], ["pane-polls", 620], ["pane-search", 630]].forEach(function (d) { map.createPane(d[0]); map.getPane(d[0]).style.zIndex = d[1]; });
+    [["pane-groc", 610], ["pane-early", 615], ["pane-polls", 620], ["pane-search", 630], ["pane-labels", 660]].forEach(function (d) { map.createPane(d[0]); map.getPane(d[0]).style.zIndex = d[1]; });
     R = L.canvas({ padding: 0.5 });
   }
-  function updateZoomClass() { map.getContainer().classList.toggle("show-stop-labels", map.getZoom() >= 14); }
+  function updateZoomClass() {
+    var z = map.getZoom();
+    map.getContainer().classList.toggle("show-stop-labels", z >= 14);
+    map.getContainer().classList.toggle("show-ed-labels", z >= 15);
+  }
 
   function wireUi() {
     var input = document.getElementById("search"), results = document.getElementById("search-results");
@@ -463,6 +486,7 @@
 
     document.getElementById("shading-mode").addEventListener("change", function (e) { state.shadingMode = e.target.value; refreshDistricts(); });
     document.getElementById("lyr-lines").addEventListener("change", function (e) { toggleLines(e.target.checked); });
+    document.getElementById("lyr-labels").addEventListener("change", function (e) { toggleLabels(e.target.checked); });
     document.getElementById("lyr-hoods").addEventListener("change", function (e) { toggleHoods(e.target.checked); });
     document.getElementById("lyr-subway").addEventListener("change", function (e) { toggleSubway(e.target.checked); });
     document.getElementById("lyr-polls").addEventListener("change", function (e) { togglePolls(e.target.checked); });

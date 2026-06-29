@@ -5,8 +5,6 @@
   "use strict";
 
   var DATA = {
-    locations: "data/locations.json",
-    summary: "data/summary.json",
     districts: "data/districts.geojson",
     boreslasher: "data/bores_lasher_results.geojson",
     neighborhoods: "data/neighborhoods.geojson",
@@ -15,11 +13,11 @@
     early: "data/early_voting_sites.geojson",
     groc: "data/supermarkets.geojson",
   };
-  var PLAN_KEY = "cm_plan_v2";
+  var GEOCODE = "https://geosearch.planninglabs.nyc/v2/autocomplete?text=";
+  var PLAN_KEY = "cm_plan_v3"; // plan items are now {k,id,label,lat,lng,icon}
 
   var DAY_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
   var MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-
   function shiftTime(date, shift) {
     var weekend = date.getDay() === 0 || date.getDay() === 6;
     if (weekend) return shift === "AM" ? "9a–1p" : "12–4p";
@@ -37,30 +35,20 @@
   var MAYOR_COLORS = { "Zohran Kwame Mamdani": "#f4845f", "Andrew M. Cuomo": "#3a6ea5", "Brad Lander": "#6a4c93", "": "#cfd6dd" };
   var MAYOR_SHORT = { "Zohran Kwame Mamdani": "Mamdani", "Andrew M. Cuomo": "Cuomo", "Brad Lander": "Lander" };
   var BL_COLORS = { Bores: "#006544", Lasher: "#fdb800", Tie: "#9aa7b4", "No votes": "#e6eaee" };
-  function leanColor(cat) {
-    cat = String(cat || "");
-    if (/bores/i.test(cat)) return "#006544";
-    if (/lasher/i.test(cat)) return "#c79100";
-    return "#6b7785";
-  }
-
-  // stronger ramps (darker high end) for clearer high/low separation
+  function leanColor(cat) { cat = String(cat || ""); if (/bores/i.test(cat)) return "#006544"; if (/lasher/i.test(cat)) return "#c79100"; return "#6b7785"; }
   var RAMPS = { opportunity: [[255, 247, 232], [150, 0, 12]], turnout: [[233, 242, 255], [3, 41, 99]], coverage: [[233, 250, 236], [0, 78, 33]] };
 
   var state = {
-    locations: [], summary: null, locById: {},
     geo: {}, edProps: {},
-    selectedId: null, sort: "opportunity", search: "",
     shadingMode: "opportunity",
     weekStart: null, activeDay: null, activeShift: "AM", plan: {},
     pcts: {},
   };
 
-  var map, legend, districtLayer;
+  var map, legend, districtLayer, R, searchMarker = null, searchTimer = null, searchAbort = null;
   var overlay = { hoods: null, subway: null, polls: null, early: null, groc: null };
-  var R; // single shared canvas renderer for all vector layers (so clicks hit-test correctly)
   var edCentroid = {};
-  var maxWeighted = 1, maxBallots = 1, maxCoverage = 1, maxOpportunity = 1;
+  var maxBallots = 1, maxCoverage = 1, maxOpportunity = 1;
   var TODAY = startOfDay(new Date());
 
   // ---- helpers ---------------------------------------------------------
@@ -75,28 +63,14 @@
   function addDays(d, n) { var x = new Date(d); x.setDate(x.getDate() + n); return x; }
   function prettyDate(d) { return MONTHS[d.getMonth()] + " " + d.getDate(); }
   function dowName(d) { return DAY_NAMES[(d.getDay() + 6) % 7]; }
-  function pipeList(s) { return (s || "").split("|").map(function (x) { return x.trim(); }).filter(Boolean); }
-  function firstAlias(loc) { var a = (loc.location_aliases || "").split("|")[0].trim(); return a || ("Site at " + loc.latitude.toFixed(4) + ", " + loc.longitude.toFixed(4)); }
   function escapeHtml(s) { return String(s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
+  function escAttr(s) { return escapeHtml(s).replace(/"/g, "&quot;"); }
   function edShort(ed) { ed = String(ed); return Number(ed.slice(0, -3)) + "/" + Number(ed.slice(-3)); }
   function edLabel(ed) { ed = String(ed); return "AD " + Number(ed.slice(0, -3)) + " · ED " + Number(ed.slice(-3)); }
-
-  function lastCanvassed(loc) {
-    var dates = pipeList(loc.dates_active).map(parseISO).filter(function (d) { return !isNaN(d); });
-    return dates.length ? dates.reduce(function (a, b) { return b > a ? b : a; }) : null;
-  }
-  function recencyLabel(loc) {
-    var last = lastCanvassed(loc);
-    if (!last) return { text: "never", cls: "stale", days: 99999 };
-    var d = Math.round((TODAY - last) / 86400000), weeks = Math.round(d / 7);
-    return { text: d <= 7 ? "this week" : (weeks <= 1 ? "1 wk ago" : weeks + " wks ago"), cls: d >= 35 ? "stale" : (d <= 14 ? "fresh" : ""), days: d };
-  }
 
   function lerp(a, b, t) { return a.map(function (x, i) { return Math.round(x + (b[i] - x) * t); }); }
   function rgb(c) { return "rgb(" + c[0] + "," + c[1] + "," + c[2] + ")"; }
   function rampCol(mode, t) { var r = RAMPS[mode] || RAMPS.opportunity; return rgb(lerp(r[0], r[1], clamp01(t))); }
-
-  // percentile (rank) of a value within a precomputed sorted array — spreads colors evenly
   function lowerBound(arr, v) { var lo = 0, hi = arr.length; while (lo < hi) { var m = (lo + hi) >> 1; if (arr[m] < v) lo = m + 1; else hi = m; } return lo; }
   function percentile(name, v) { var a = state.pcts[name]; if (!a || a.length < 2) return 1; return lowerBound(a, v) / (a.length - 1); }
 
@@ -105,70 +79,35 @@
     return fetch(DATA[name]).then(function (r) { return r.json(); }).then(function (g) { state.geo[name] = g; return g; });
   }
 
-  // ---- summary + browse list -------------------------------------------
-  function buildSummary() {
-    var s = state.summary || {};
-    var stats = [
-      { num: state.locations.length, lbl: "Past locations" },
-      { num: num(s.site_days_total), lbl: "Site-days" },
-      { num: Math.round(num(s.total_raw_person_days_all_locations)), lbl: "Total person-days" },
-      { num: fmt(s.total_weighted_person_days_all_locations), lbl: "Weighted coverage" },
-    ];
-    document.getElementById("summary").innerHTML = stats.map(function (x) {
-      return '<div class="stat"><div class="num">' + x.num + '</div><div class="lbl">' + x.lbl + "</div></div>";
-    }).join("");
+  // ====================================================================
+  //  PLAN MODEL  — plan[iso][shift] = [ {k,id,label,lat,lng,icon}, ... ]
+  // ====================================================================
+  function loadPlan() { try { state.plan = JSON.parse(localStorage.getItem(PLAN_KEY)) || {}; } catch (e) { state.plan = {}; } }
+  function savePlan() { try { localStorage.setItem(PLAN_KEY, JSON.stringify(state.plan)); } catch (e) {} }
+  function shiftArr(iso, shift, make) { var d = state.plan[iso]; if (!d) { if (!make) return []; d = state.plan[iso] = { AM: [], PM: [] }; } if (!d[shift]) d[shift] = []; return d[shift]; }
+  function activeHas(id) { return shiftArr(state.activeDay, state.activeShift, false).some(function (x) { return x.id === id; }); }
+  function activeEdSet() { return new Set(shiftArr(state.activeDay, state.activeShift, false).filter(function (x) { return x.k === "ed"; }).map(function (x) { return x.id; })); }
+  function toggleItem(item) {
+    var arr = shiftArr(state.activeDay, state.activeShift, true);
+    var i = arr.map(function (x) { return x.id; }).indexOf(item.id);
+    if (i === -1) arr.push(item); else arr.splice(i, 1);
+    savePlan(); refreshDistricts(); renderPlan();
   }
-  function locScore(loc, key) {
-    if (key === "recency") return recencyLabel(loc).days;
-    if (key === "opportunity") { var rec = recencyLabel(loc).days; return Math.min(rec, 120) * Math.sqrt(num(loc.raw_person_days) + 1); }
-    return num(loc[key]);
+  function removeItem(iso, shift, id) {
+    var arr = shiftArr(iso, shift, false), i = arr.map(function (x) { return x.id; }).indexOf(id);
+    if (i !== -1) arr.splice(i, 1); savePlan(); refreshDistricts(); renderPlan();
   }
-  function visibleLocations() {
-    var q = state.search.trim().toLowerCase();
-    var list = state.locations.filter(function (loc) {
-      if (!q) return true;
-      return (loc.location_aliases || "").toLowerCase().indexOf(q) !== -1 || (loc.unique_people || "").toLowerCase().indexOf(q) !== -1;
-    });
-    var key = state.sort;
-    list.sort(function (a, b) { return key === "location_aliases" ? firstAlias(a).localeCompare(firstAlias(b)) : locScore(b, key) - locScore(a, key); });
-    return list;
-  }
-  function renderList() {
-    var list = visibleLocations(), ul = document.getElementById("location-list");
-    ul.innerHTML = list.map(function (loc) {
-      var active = loc.location_id === state.selectedId ? " active" : "", rec = recencyLabel(loc);
-      return '<li class="loc-row' + active + '" data-id="' + escapeHtml(loc.location_id) + '"><div class="loc-main">' +
-        '<div class="name"><span class="swatch" style="background:' + rampCol("coverage", num(loc.weighted_person_days) / maxWeighted) + '"></span>' +
-        escapeHtml(firstAlias(loc)) + "</div>" +
-        '<div class="meta">Last canvassed <span class="recency ' + rec.cls + '">' + rec.text + "</span> · " +
-        num(loc.raw_person_days) + " person-days · " + num(loc.unique_people_count) + " volunteers</div></div></li>";
-    }).join("");
-    document.getElementById("count-line").textContent = list.length + " of " + state.locations.length + " past sites";
-    Array.prototype.forEach.call(ul.querySelectorAll(".loc-row"), function (li) {
-      li.addEventListener("click", function () { selectLocation(li.getAttribute("data-id")); });
-    });
-  }
-
-  // ---- canvassing site markers -----------------------------------------
-  function sitePopup(loc) {
-    var people = pipeList(loc.unique_people), dates = pipeList(loc.dates_active), rec = recencyLabel(loc);
-    return '<div class="popup-title">' + escapeHtml(firstAlias(loc)) + "</div><div class='popup-grid'>" +
-      '<span class="k">Last canvassed</span><span>' + rec.text + "</span>" +
-      '<span class="k">Days active</span><span>' + num(loc.days_active) + "</span>" +
-      '<span class="k">Person-days</span><span>' + num(loc.raw_person_days) + "</span>" +
-      '<span class="k">Unique volunteers</span><span>' + num(loc.unique_people_count) + "</span></div>" +
-      '<div class="popup-dates"><strong>Dates:</strong> ' + (dates.length ? escapeHtml(dates.join(", ")) : "—") + "</div>" +
-      (people.length ? '<div class="popup-dates"><strong>Volunteers:</strong> ' + escapeHtml(people.slice(0, 12).join(", ")) + (people.length > 12 ? " +" + (people.length - 12) + " more" : "") + "</div>" : "");
-  }
-  function selectLocation(id) {
-    state.selectedId = id; var loc = state.locById[id]; if (!loc) return;
-    map.setView([loc.latitude, loc.longitude], Math.max(map.getZoom(), 15));
-    L.popup({ maxWidth: 320 }).setLatLng([loc.latitude, loc.longitude]).setContent(sitePopup(loc)).openOn(map);
-    renderList();
+  function activeShiftLabel() { var d = parseISO(state.activeDay); return dowName(d) + " " + state.activeShift; }
+  function addBtnHtml(item) {
+    var inShift = activeHas(item.id);
+    return '<button class="plan-add' + (inShift ? " in" : "") + '"' +
+      ' data-k="' + escAttr(item.k) + '" data-id="' + escAttr(item.id) + '" data-label="' + escAttr(item.label) + '"' +
+      ' data-lat="' + item.lat + '" data-lng="' + item.lng + '" data-icon="' + escAttr(item.icon || "") + '">' +
+      (inShift ? "✓ In " + activeShiftLabel() + " — remove" : "➕ Add to " + activeShiftLabel()) + "</button>";
   }
 
   // ====================================================================
-  //  DISTRICTS — always-present, clickable layer
+  //  DISTRICTS
   // ====================================================================
   function districtMetric(p, mode) {
     var ballots = num(p.ballots_cast), cov = num(p.distance_adjusted_weighted_person_days) || num(p.weighted_person_days);
@@ -185,9 +124,8 @@
     state.pcts.mayorShare = sortedBy(function (p) { return num(p.top_mayor_rank1_share); }, function (p) { return p.top_mayor_rank1_candidate; });
     state.pcts.blMargin = sortedBy(function (p) { return Math.abs(num(p.bl_margin)); }, function (p) { return num(p.bl_total) > 0; });
   }
-  function activeSet() { var d = state.plan[state.activeDay]; return new Set((d && d[state.activeShift]) || []); }
   function districtStyle(feature) {
-    var mode = state.shadingMode, p = feature.properties, sel = activeSet().has(String(p.elect_dist));
+    var mode = state.shadingMode, p = feature.properties, sel = activeEdSet().has(String(p.elect_dist));
     var st = { color: sel ? "#1f6feb" : "#7e93a8", weight: sel ? 2.8 : 0.4, opacity: 1 };
     if (mode === "none") { st.fill = true; st.fillColor = "#fff"; st.fillOpacity = 0.02; return st; }
     if (mode === "mayor2025") {
@@ -206,14 +144,10 @@
     return st;
   }
   function districtTooltip(p) {
-    var head = "ED " + p.election_district + " · AD " + p.assembly_district;
-    return head + "<br><span class='tt-hint'>Click for details &amp; to add to a shift</span>";
+    return "ED " + p.election_district + " · AD " + p.assembly_district + "<br><span class='tt-hint'>Click for details &amp; to add to a shift</span>";
   }
-
-  function activeShiftLabel() { var d = parseISO(state.activeDay); return dowName(d) + " " + state.activeShift; }
   function edPopupHtml(p) {
-    var ed = String(p.elect_dist);
-    var regDem = num(p.reg_dem_2024), regTot = num(p.reg_total_2024);
+    var ed = String(p.elect_dist), regDem = num(p.reg_dem_2024), regTot = num(p.reg_total_2024);
     var primT = num(p.bl_total), primLine;
     if (primT > 0) {
       var margPts = Math.round(Math.abs(num(p.bl_bores_share) - num(p.bl_lasher_share)) * 100);
@@ -224,20 +158,15 @@
     var mayLine = mw ? "<strong>" + escapeHtml(MAYOR_SHORT[mw] || mw) + "</strong> led with " + pct(p.top_mayor_rank1_share) + "<br><span class='sub'>" + commas(p.top_mayor_rank1_votes) + " votes</span>" : "no data";
     var primPct = regDem ? " (" + Math.round(primT / regDem * 100) + "% of Dems)" : "";
     var mayPct = regDem ? " (" + Math.round(mayT / regDem * 100) + "% of Dems)" : "";
-    var inShift = activeSet().has(ed);
-    var btn = '<button class="ed-add' + (inShift ? " in" : "") + '" data-ed="' + ed + '">' +
-      (inShift ? "✓ In " + activeShiftLabel() + " — click to remove" : "➕ Add to " + activeShiftLabel()) + "</button>";
+    var c = edCentroid[ed] || { lat: 0, lng: 0 };
+    var item = { k: "ed", id: ed, label: "ED " + edShort(ed), lat: c.lat, lng: c.lng, icon: "🗳" };
     return '<div class="popup-title">Election District ' + p.election_district + " <span class='sub'>(AD " + p.assembly_district + ")</span></div>" +
       "<div class='popup-grid'><span class='k'>Registered Dems</span><span>" + commas(regDem) + (regTot ? " <span class='sub'>of " + commas(regTot) + "</span>" : "") + "</span></div>" +
-      "<div class='popup-sec'><strong>2026 Dem primary</strong><div class='popup-grid'>" +
-      "<span class='k'>Turnout</span><span>" + commas(primT) + primPct + "</span>" +
-      "<span class='k'>Result</span><span>" + primLine + "</span></div></div>" +
-      "<div class='popup-sec'><strong>2025 Mayor (Dem primary)</strong><div class='popup-grid'>" +
-      "<span class='k'>Turnout</span><span>" + commas(mayT) + mayPct + "</span>" +
-      "<span class='k'>Result</span><span>" + mayLine + "</span></div></div>" + btn;
+      "<div class='popup-sec'><strong>2026 Dem primary</strong><div class='popup-grid'><span class='k'>Turnout</span><span>" + commas(primT) + primPct + "</span><span class='k'>Result</span><span>" + primLine + "</span></div></div>" +
+      "<div class='popup-sec'><strong>2025 Mayor (Dem primary)</strong><div class='popup-grid'><span class='k'>Turnout</span><span>" + commas(mayT) + mayPct + "</span><span class='k'>Result</span><span>" + mayLine + "</span></div></div>" +
+      addBtnHtml(item);
   }
   function openEdPopup(p, latlng) { L.popup({ maxWidth: 300, className: "ed-popup" }).setLatLng(latlng).setContent(edPopupHtml(p)).openOn(map); }
-
   function buildDistrictLayer(g) {
     districtLayer = L.geoJSON(g, {
       renderer: R, style: districtStyle,
@@ -250,14 +179,10 @@
       },
     }).addTo(map);
   }
-  function refreshDistricts() {
-    if (!districtLayer) return;
-    districtLayer.setStyle(districtStyle);
-    updateLegend();
-  }
+  function refreshDistricts() { if (!districtLayer) return; districtLayer.setStyle(districtStyle); updateLegend(); }
 
   // ====================================================================
-  //  POINT OVERLAYS
+  //  POINT OVERLAYS  (each marker's popup has an Add-to-shift button)
   // ====================================================================
   function toggleHoods(on) {
     if (!on) { if (overlay.hoods) map.removeLayer(overlay.hoods); return; }
@@ -267,6 +192,10 @@
         onEachFeature: function (f, l) { l.bindTooltip(escapeHtml(f.properties.name || "Neighborhood"), { permanent: true, direction: "center", className: "hood-label" }); } }).addTo(map);
     });
   }
+  function pinIcon(cls, color, glyph) { return L.divIcon({ className: "", html: '<div class="' + cls + '" style="background:' + color + '">' + glyph + "</div>", iconSize: [18, 18], iconAnchor: [9, 9] }); }
+  function ll(f) { var c = f.geometry.coordinates; return { lat: c[1], lng: c[0] }; }
+  function ptId(prefix, p) { return prefix + ":" + p.lat.toFixed(5) + "," + p.lng.toFixed(5); }
+
   function toggleSubway(on) {
     if (!on) { if (overlay.subway) map.removeLayer(overlay.subway); return; }
     if (overlay.subway) { overlay.subway.addTo(map); return; }
@@ -274,14 +203,14 @@
       overlay.subway = L.geoJSON(g, {
         pointToLayer: function (f, latlng) { return L.circleMarker(latlng, { renderer: R, radius: 4.5, color: "#fff", weight: 1.5, fillColor: trunkColor(f.properties.routes), fillOpacity: 1 }); },
         onEachFeature: function (f, l) {
-          var p = f.properties, label = escapeHtml(p.name || "");
-          l.bindTooltip(label, { permanent: true, direction: "right", offset: [6, 0], className: "station-label" });
-          l.bindPopup("<strong>🚇 " + label + "</strong><br>" + escapeHtml(p.routes || ""));
+          var p = ll(f), name = f.properties.name || "Station", routes = f.properties.routes || "";
+          l.bindTooltip(escapeHtml(name), { permanent: true, direction: "right", offset: [6, 0], className: "station-label" });
+          l.bindPopup('<div class="popup-title">🚇 ' + escapeHtml(name) + "</div><div class='sub'>" + escapeHtml(routes) + "</div>" +
+            addBtnHtml({ k: "pt", id: ptId("sub", p), label: name, lat: p.lat, lng: p.lng, icon: "🚇" }), { maxWidth: 260 });
         },
       }).addTo(map);
     });
   }
-  function pinIcon(cls, color, glyph) { return L.divIcon({ className: "", html: '<div class="' + cls + '" style="background:' + color + '">' + glyph + "</div>", iconSize: [18, 18], iconAnchor: [9, 9] }); }
   function togglePolls(on) {
     if (!on) { if (overlay.polls) map.removeLayer(overlay.polls); return; }
     if (overlay.polls) { overlay.polls.addTo(map); return; }
@@ -289,10 +218,14 @@
       overlay.polls = L.geoJSON(g, {
         pointToLayer: function (f, latlng) { return L.marker(latlng, { icon: pinIcon("poll-pin", leanColor(f.properties.category), "🗳"), pane: "pane-polls" }); },
         onEachFeature: function (f, l) {
-          var p = f.properties;
-          l.bindTooltip("<strong>" + escapeHtml(p.name || "") + "</strong> <span style='color:#888'>(priority poll site)</span><br>" + escapeHtml(p.address || "") +
-            (p.neighborhood ? "<br>" + escapeHtml(p.neighborhood) : "") + (p.category ? "<br>Lean: " + escapeHtml(p.category) : "") +
-            (p.priority ? " · Priority " + escapeHtml(p.priority) : "") + (p.bodies_am_pm ? "<br>Bodies needed (AM/PM): " + escapeHtml(p.bodies_am_pm) : ""), { sticky: true });
+          var q = f.properties, p = ll(f), name = q.name || "Poll site";
+          l.bindPopup('<div class="popup-title">🗳 ' + escapeHtml(name) + "</div><div class='sub'>Priority Election Day poll site</div>" +
+            "<div class='popup-grid'>" + (q.address ? "<span class='k'>Address</span><span>" + escapeHtml(q.address) + "</span>" : "") +
+            (q.neighborhood ? "<span class='k'>Area</span><span>" + escapeHtml(q.neighborhood) + "</span>" : "") +
+            (q.category ? "<span class='k'>Lean</span><span>" + escapeHtml(q.category) + "</span>" : "") +
+            (q.priority ? "<span class='k'>Priority</span><span>" + escapeHtml(q.priority) + "</span>" : "") +
+            (q.bodies_am_pm ? "<span class='k'>Bodies (AM/PM)</span><span>" + escapeHtml(q.bodies_am_pm) + "</span>" : "") + "</div>" +
+            addBtnHtml({ k: "pt", id: ptId("poll", p), label: name, lat: p.lat, lng: p.lng, icon: "🗳" }), { maxWidth: 280 });
         },
       }).addTo(map);
     });
@@ -303,7 +236,11 @@
     ensureData("early").then(function (g) {
       overlay.early = L.geoJSON(g, {
         pointToLayer: function (f, latlng) { return L.marker(latlng, { icon: pinIcon("early-pin", "#5b21b6", "EV"), pane: "pane-early" }); },
-        onEachFeature: function (f, l) { l.bindTooltip("<strong>" + escapeHtml(f.properties.name || "") + "</strong><br>Early voting site", { sticky: true }); },
+        onEachFeature: function (f, l) {
+          var p = ll(f), name = f.properties.name || "Early voting site";
+          l.bindPopup('<div class="popup-title">🗳 ' + escapeHtml(name) + "</div><div class='sub'>Early voting site</div>" +
+            addBtnHtml({ k: "pt", id: ptId("ev", p), label: name, lat: p.lat, lng: p.lng, icon: "🗳" }), { maxWidth: 260 });
+        },
       }).addTo(map);
     });
   }
@@ -313,9 +250,47 @@
     ensureData("groc").then(function (g) {
       overlay.groc = L.geoJSON(g, {
         pointToLayer: function (f, latlng) { return L.marker(latlng, { icon: pinIcon("groc-pin", "#2e7d32", "🛒"), pane: "pane-groc" }); },
-        onEachFeature: function (f, l) { l.bindTooltip("🛒 " + escapeHtml(f.properties.name || "Supermarket"), { sticky: true }); },
+        onEachFeature: function (f, l) {
+          var p = ll(f), name = f.properties.name || "Supermarket";
+          l.bindPopup('<div class="popup-title">🛒 ' + escapeHtml(name) + "</div><div class='sub'>Supermarket</div>" +
+            addBtnHtml({ k: "pt", id: ptId("groc", p), label: name, lat: p.lat, lng: p.lng, icon: "🛒" }), { maxWidth: 260 });
+        },
       }).addTo(map);
     });
+  }
+
+  // ====================================================================
+  //  SEARCH (geocoder — any address or place)
+  // ====================================================================
+  function doSearch(q) {
+    if (searchAbort) searchAbort.abort();
+    searchAbort = new AbortController();
+    fetch(GEOCODE + encodeURIComponent(q), { signal: searchAbort.signal })
+      .then(function (r) { return r.json(); })
+      .then(function (d) { renderResults((d.features || []).slice(0, 7)); })
+      .catch(function () {});
+  }
+  function renderResults(features) {
+    var ul = document.getElementById("search-results");
+    if (!features.length) { ul.innerHTML = ""; ul.classList.remove("show"); return; }
+    ul.innerHTML = features.map(function (f, i) {
+      var c = f.geometry.coordinates;
+      return '<li data-i="' + i + '" data-lat="' + c[1] + '" data-lng="' + c[0] + '" data-label="' + escAttr(f.properties.label || "") + '">' + escapeHtml(f.properties.label || "") + "</li>";
+    }).join("");
+    ul.classList.add("show");
+    Array.prototype.forEach.call(ul.querySelectorAll("li"), function (li) {
+      li.addEventListener("click", function () { pickResult(+li.getAttribute("data-lat"), +li.getAttribute("data-lng"), li.getAttribute("data-label")); });
+    });
+  }
+  function pickResult(lat, lng, label) {
+    document.getElementById("search-results").classList.remove("show");
+    document.getElementById("search").value = label;
+    if (searchMarker) map.removeLayer(searchMarker);
+    searchMarker = L.marker([lat, lng], { icon: pinIcon("search-pin", "#1f6feb", "📍"), pane: "pane-search" }).addTo(map);
+    searchMarker.bindPopup('<div class="popup-title">📍 ' + escapeHtml(label) + "</div>" +
+      addBtnHtml({ k: "pt", id: "pin:" + lat.toFixed(5) + "," + lng.toFixed(5), label: label, lat: lat, lng: lng, icon: "📍" }), { maxWidth: 280 });
+    map.setView([lat, lng], 16);
+    searchMarker.openPopup();
   }
 
   // ---- legend ----------------------------------------------------------
@@ -323,12 +298,8 @@
     if (!legend) return;
     var el = legend.getContainer(), mode = state.shadingMode;
     if (mode === "none") { el.innerHTML = "<h4>Map</h4><div class='sub'>Click a district for details.</div>"; return; }
-    if (mode === "mayor2025") {
-      el.innerHTML = "<h4>2025 Mayor — who led each ED</h4>" + cat(MAYOR_COLORS["Zohran Kwame Mamdani"], "Mamdani") + cat(MAYOR_COLORS["Andrew M. Cuomo"], "Cuomo") + cat(MAYOR_COLORS["Brad Lander"], "Lander") + '<div class="sub">Stronger color = bigger win.</div>'; return;
-    }
-    if (mode === "boreslasher") {
-      el.innerHTML = "<h4>2026 Dem Primary — who won each ED</h4>" + cat(BL_COLORS.Bores, "Bores") + cat(BL_COLORS.Lasher, "Lasher") + cat(BL_COLORS.Tie, "Tie / other") + '<div class="sub">Stronger color = bigger margin.</div>'; return;
-    }
+    if (mode === "mayor2025") { el.innerHTML = "<h4>2025 Mayor — who led each ED</h4>" + cat(MAYOR_COLORS["Zohran Kwame Mamdani"], "Mamdani") + cat(MAYOR_COLORS["Andrew M. Cuomo"], "Cuomo") + cat(MAYOR_COLORS["Brad Lander"], "Lander") + '<div class="sub">Stronger color = bigger win.</div>'; return; }
+    if (mode === "boreslasher") { el.innerHTML = "<h4>2026 Dem Primary — who won each ED</h4>" + cat(BL_COLORS.Bores, "Bores") + cat(BL_COLORS.Lasher, "Lasher") + cat(BL_COLORS.Tie, "Tie / other") + '<div class="sub">Stronger color = bigger margin.</div>'; return; }
     var titles = { opportunity: "Priority for next week", turnout: "2025 Dem primary turnout", coverage: "Canvassing coverage so far" };
     var ends = { opportunity: ["covered / low turnout", "high turnout, under-canvassed"], turnout: ["fewer voters", "more voters"], coverage: ["not canvassed", "heavily canvassed"] };
     var ramp = ""; for (var i = 0; i <= 8; i++) ramp += '<span style="background:' + rampCol(mode, i / 8) + '"></span>';
@@ -337,16 +308,10 @@
   function cat(color, label) { return '<div class="cat"><span class="box" style="background:' + color + '"></span>' + escapeHtml(label) + "</div>"; }
 
   // ====================================================================
-  //  WEEKLY SHIFT PLANNER (by election district)
+  //  WEEKLY SHIFT PLANNER UI
   // ====================================================================
-  function loadPlan() { try { state.plan = JSON.parse(localStorage.getItem(PLAN_KEY)) || {}; } catch (e) { state.plan = {}; } }
-  function savePlan() { try { localStorage.setItem(PLAN_KEY, JSON.stringify(state.plan)); } catch (e) {} }
   function nextMonday() { var day = TODAY.getDay(), delta = ((8 - day) % 7) || 7; return addDays(TODAY, delta); }
   function weekDays() { var out = []; for (var i = 0; i < 7; i++) out.push(addDays(state.weekStart, i)); return out; }
-  function shiftArr(iso, shift, make) { var d = state.plan[iso]; if (!d) { if (!make) return []; d = state.plan[iso] = { AM: [], PM: [] }; } if (!d[shift]) d[shift] = []; return d[shift]; }
-  function toggleEd(ed) { var arr = shiftArr(state.activeDay, state.activeShift, true), i = arr.indexOf(ed); if (i === -1) arr.push(ed); else arr.splice(i, 1); savePlan(); refreshDistricts(); renderPlan(); }
-  function removeEd(iso, shift, ed) { var arr = shiftArr(iso, shift, false), i = arr.indexOf(ed); if (i !== -1) arr.splice(i, 1); savePlan(); refreshDistricts(); renderPlan(); }
-
   function renderShiftBanner() {
     var b = document.getElementById("shift-banner"); if (!b) return; var d = parseISO(state.activeDay);
     b.innerHTML = "Now adding to <strong>" + dowName(d) + " " + prettyDate(d) + " · " + state.activeShift + " (" + shiftTime(d, state.activeShift) + ")</strong>";
@@ -358,11 +323,12 @@
     container.innerHTML = weekDays().map(function (d) {
       var iso = isoOf(d);
       var shifts = ["AM", "PM"].map(function (sh) {
-        var eds = shiftArr(iso, sh, false), isActive = (iso === state.activeDay && sh === state.activeShift) ? " active" : "";
-        var chips = eds.map(function (ed) {
-          return '<li class="ed-chip"><span class="ed-go" data-ed="' + ed + '">' + escapeHtml(edShort(ed)) + '</span><button class="rm-btn" data-rm="' + ed + '" data-day="' + iso + '" data-shift="' + sh + '">✕</button></li>';
+        var items = shiftArr(iso, sh, false), isActive = (iso === state.activeDay && sh === state.activeShift) ? " active" : "";
+        var chips = items.map(function (it) {
+          return '<li class="ed-chip"><span class="ed-go" data-lat="' + it.lat + '" data-lng="' + it.lng + '">' + (it.icon ? escapeHtml(it.icon) + " " : "") + escapeHtml(it.label) +
+            '</span><button class="rm-btn" data-rm="' + escAttr(it.id) + '" data-day="' + iso + '" data-shift="' + sh + '">✕</button></li>';
         }).join("");
-        return '<div class="shift-row' + isActive + '" data-day="' + iso + '" data-shift="' + sh + '"><div class="shift-head"><span class="sh-name">' + sh + '</span><span class="sh-time">' + shiftTime(d, sh) + '</span><span class="sh-count">' + (eds.length ? eds.length + " ED" + (eds.length > 1 ? "s" : "") : "select") + "</span></div><ul class='ed-chips'>" + chips + "</ul></div>";
+        return '<div class="shift-row' + isActive + '" data-day="' + iso + '" data-shift="' + sh + '"><div class="shift-head"><span class="sh-name">' + sh + '</span><span class="sh-time">' + shiftTime(d, sh) + '</span><span class="sh-count">' + (items.length ? items.length + " stop" + (items.length > 1 ? "s" : "") : "select") + "</span></div><ul class='ed-chips'>" + chips + "</ul></div>";
       }).join("");
       return '<div class="day-card"><div class="day-head static"><span class="d-name">' + dowName(d) + " " + prettyDate(d) + "</span></div>" + shifts + "</div>";
     }).join("");
@@ -370,22 +336,22 @@
       row.querySelector(".shift-head").addEventListener("click", function () { state.activeDay = row.getAttribute("data-day"); state.activeShift = row.getAttribute("data-shift"); refreshDistricts(); renderPlan(); });
     });
     Array.prototype.forEach.call(container.querySelectorAll(".rm-btn"), function (btn) {
-      btn.addEventListener("click", function (e) { e.stopPropagation(); removeEd(btn.getAttribute("data-day"), btn.getAttribute("data-shift"), btn.getAttribute("data-rm")); });
+      btn.addEventListener("click", function (e) { e.stopPropagation(); removeItem(btn.getAttribute("data-day"), btn.getAttribute("data-shift"), btn.getAttribute("data-rm")); });
     });
     Array.prototype.forEach.call(container.querySelectorAll(".ed-go"), function (g) {
-      g.addEventListener("click", function (e) { e.stopPropagation(); var c = edCentroid[g.getAttribute("data-ed")]; if (c) map.setView(c, Math.max(map.getZoom(), 15)); });
+      g.addEventListener("click", function (e) { e.stopPropagation(); var la = +g.getAttribute("data-lat"), ln = +g.getAttribute("data-lng"); if (la && ln) map.setView([la, ln], Math.max(map.getZoom(), 15)); });
     });
   }
-
+  function itemText(it) { return it.k === "ed" ? edLabel(it.id) : (it.icon ? it.icon + " " : "") + it.label; }
   function planAsText() {
     var lines = ["Canvassing plan — " + document.getElementById("week-label").textContent, ""];
     weekDays().forEach(function (d) {
       var iso = isoOf(d); if (!["AM", "PM"].some(function (sh) { return shiftArr(iso, sh, false).length; })) return;
       lines.push(dowName(d) + " " + prettyDate(d) + ":");
-      ["AM", "PM"].forEach(function (sh) { var eds = shiftArr(iso, sh, false); if (eds.length) lines.push("  " + sh + " (" + shiftTime(d, sh) + "): " + eds.map(edLabel).join(", ")); });
+      ["AM", "PM"].forEach(function (sh) { var items = shiftArr(iso, sh, false); if (items.length) lines.push("  " + sh + " (" + shiftTime(d, sh) + "): " + items.map(itemText).join(", ")); });
       lines.push("");
     });
-    if (lines.length <= 2) lines.push("(no districts assigned yet)");
+    if (lines.length <= 2) lines.push("(nothing assigned yet)");
     return lines.join("\n");
   }
   function copyPlan() {
@@ -395,7 +361,7 @@
   function printPlan() {
     var rows = weekDays().map(function (d) {
       var iso = isoOf(d);
-      var inner = ["AM", "PM"].map(function (sh) { var eds = shiftArr(iso, sh, false); return "<div class='sh'><strong>" + sh + " (" + shiftTime(d, sh) + ")</strong>: " + (eds.length ? eds.map(edLabel).join(", ") : "—") + "</div>"; }).join("");
+      var inner = ["AM", "PM"].map(function (sh) { var items = shiftArr(iso, sh, false); return "<div class='sh'><strong>" + sh + " (" + shiftTime(d, sh) + ")</strong>: " + (items.length ? items.map(itemText).join(", ") : "—") + "</div>"; }).join("");
       return "<div class='d'><h3>" + dowName(d) + " " + prettyDate(d) + "</h3>" + inner + "</div>";
     }).join("");
     var html = "<html><head><title>Canvassing plan</title><style>body{font-family:-apple-system,Arial,sans-serif;margin:32px;color:#1f2b38}h1{font-size:20px}h3{font-size:14px;margin:0 0 4px;border-bottom:1px solid #ccc;padding-bottom:3px}.d{margin-bottom:12px}.sh{font-size:13px;margin:2px 0}</style></head><body><h1>Canvassing plan</h1><h2 style='font-size:14px;color:#555'>" + escapeHtml(document.getElementById("week-label").textContent) + "</h2>" + rows + "</body></html>";
@@ -405,20 +371,20 @@
 
   // ---- init ------------------------------------------------------------
   function makePanes() {
-    // Only DOM-marker pins need their own panes (small divs that don't block map clicks).
-    [["pane-groc", 610], ["pane-early", 615], ["pane-polls", 620]].forEach(function (d) {
-      map.createPane(d[0]); map.getPane(d[0]).style.zIndex = d[1];
-    });
-    // One shared canvas for districts + dots + subway + neighborhoods. Stacking the
-    // canvas layers in separate panes made the top canvas swallow every click, so the
-    // districts underneath were unclickable. A single canvas hit-tests all of them.
+    [["pane-groc", 610], ["pane-early", 615], ["pane-polls", 620], ["pane-search", 630]].forEach(function (d) { map.createPane(d[0]); map.getPane(d[0]).style.zIndex = d[1]; });
     R = L.canvas({ padding: 0.5 });
   }
   function updateZoomClass() { map.getContainer().classList.toggle("show-stop-labels", map.getZoom() >= 14); }
 
   function wireUi() {
-    document.getElementById("search").addEventListener("input", function (e) { state.search = e.target.value; renderList(); });
-    document.getElementById("sort").addEventListener("change", function (e) { state.sort = e.target.value; renderList(); });
+    var input = document.getElementById("search"), results = document.getElementById("search-results");
+    input.addEventListener("input", function (e) {
+      var q = e.target.value.trim(); clearTimeout(searchTimer);
+      if (q.length < 3) { renderResults([]); return; }
+      searchTimer = setTimeout(function () { doSearch(q); }, 280);
+    });
+    document.addEventListener("click", function (e) { if (!e.target.closest(".search-wrap")) results.classList.remove("show"); });
+
     document.getElementById("shading-mode").addEventListener("change", function (e) { state.shadingMode = e.target.value; refreshDistricts(); });
     document.getElementById("lyr-hoods").addEventListener("change", function (e) { toggleHoods(e.target.checked); });
     document.getElementById("lyr-subway").addEventListener("change", function (e) { toggleSubway(e.target.checked); });
@@ -429,21 +395,24 @@
     document.getElementById("week-next").addEventListener("click", function () { state.weekStart = addDays(state.weekStart, 7); state.activeDay = isoOf(state.weekStart); refreshDistricts(); renderPlan(); });
     document.getElementById("plan-print").addEventListener("click", printPlan);
     document.getElementById("plan-copy").addEventListener("click", copyPlan);
-    document.getElementById("plan-clear").addEventListener("click", function () { if (!confirm("Remove all districts from this week's plan?")) return; weekDays().forEach(function (d) { delete state.plan[isoOf(d)]; }); savePlan(); refreshDistricts(); renderPlan(); });
+    document.getElementById("plan-clear").addEventListener("click", function () { if (!confirm("Remove everything from this week's plan?")) return; weekDays().forEach(function (d) { delete state.plan[isoOf(d)]; }); savePlan(); refreshDistricts(); renderPlan(); });
+
     var modal = document.getElementById("info-modal");
     document.getElementById("info-btn").addEventListener("click", function () { modal.classList.remove("hidden"); });
     document.getElementById("info-close").addEventListener("click", function () { modal.classList.add("hidden"); });
     modal.addEventListener("click", function (e) { if (e.target === modal) modal.classList.add("hidden"); });
     document.addEventListener("keydown", function (e) { if (e.key === "Escape") modal.classList.add("hidden"); });
+
     map.on("zoomend", updateZoomClass);
     map.on("popupopen", function (e) {
-      var pop = e.popup, root = pop.getElement(); if (!root) return;
-      var btn = root.querySelector(".ed-add"); if (!btn) return;
+      var root = e.popup.getElement(); if (!root) return;
+      var btn = root.querySelector(".plan-add"); if (!btn) return;
       btn.addEventListener("click", function () {
-        var ed = btn.getAttribute("data-ed");
-        toggleEd(ed);
-        // reopen with refreshed content -> fires popupopen again and rebinds cleanly
-        openEdPopup(state.edProps[ed], pop.getLatLng());
+        var item = { k: btn.dataset.k, id: btn.dataset.id, label: btn.dataset.label, lat: +btn.dataset.lat, lng: +btn.dataset.lng, icon: btn.dataset.icon };
+        toggleItem(item);
+        var inShift = activeHas(item.id);
+        btn.classList.toggle("in", inShift);
+        btn.textContent = inShift ? "✓ In " + activeShiftLabel() + " — remove" : "➕ Add to " + activeShiftLabel();
       });
     });
   }
@@ -461,19 +430,12 @@
     state.activeDay = isoOf(state.weekStart);
 
     Promise.all([
-      fetch(DATA.locations).then(function (r) { return r.json(); }),
-      fetch(DATA.summary).then(function (r) { return r.json(); }).catch(function () { return null; }),
       fetch(DATA.districts).then(function (r) { return r.json(); }).catch(function () { return null; }),
       fetch(DATA.boreslasher).then(function (r) { return r.json(); }).catch(function () { return null; }),
     ]).then(function (res) {
-      state.locations = (res[0] || []).filter(function (l) { return isFinite(l.latitude) && isFinite(l.longitude); });
-      state.summary = res[1];
-      state.locations.forEach(function (l) { state.locById[l.location_id] = l; });
-      maxWeighted = state.locations.reduce(function (m, l) { return Math.max(m, num(l.weighted_person_days)); }, 1);
-
-      var districts = res[2];
-      if (districts && res[3]) {
-        var bl = {}; res[3].features.forEach(function (f) { bl[String(f.properties.elect_dist)] = f.properties; });
+      var districts = res[0];
+      if (districts && res[1]) {
+        var bl = {}; res[1].features.forEach(function (f) { bl[String(f.properties.elect_dist)] = f.properties; });
         districts.features.forEach(function (f) {
           var p = f.properties, b = bl[String(p.elect_dist)];
           if (b) { p.bl_bores = b.bores; p.bl_lasher = b.lasher; p.bl_total = b.total_votes; p.bl_bores_share = b.bores_share; p.bl_lasher_share = b.lasher_share; p.bl_margin = b.margin; p.bl_winner = b.winner; }
@@ -489,16 +451,11 @@
         maxOpportunity = districts.features.reduce(function (m, f) { return Math.max(m, districtMetric(f.properties, "opportunity")); }, 0.0001);
         buildPercentiles(districts.features);
         buildDistrictLayer(districts);
+        map.invalidateSize();
+        try { map.fitBounds(districtLayer.getBounds(), { padding: [20, 20], animate: false }); } catch (e) {}
       }
-
-      buildSummary(); renderList(); renderPlan(); updateLegend();
-      var pts = state.locations.map(function (l) { return [l.latitude, l.longitude]; });
-      if (pts.length) { map.invalidateSize(); map.fitBounds(pts, { padding: [40, 40], maxZoom: 15, animate: false }); }
-      updateZoomClass();
-    }).catch(function (err) {
-      document.getElementById("subtitle").textContent = "Could not load data — open this through start_map.command (see README).";
-      console.error(err);
-    });
+      renderPlan(); updateLegend(); updateZoomClass();
+    }).catch(function (err) { console.error(err); });
 
     wireUi();
   }

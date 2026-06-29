@@ -6,7 +6,7 @@
   <title>Canvassing Planner — Locations Map</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
         integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
-  <link rel="stylesheet" href="style.css?v=5" />
+  <link rel="stylesheet" href="style.css?v=6" />
 </head>
 <body>
   <div id="app">
@@ -14,10 +14,12 @@
     <aside id="panel-left" class="panel">
       <header class="panel-header">
         <h1>Canvassing Planner</h1>
-        <p id="subtitle">Where the team has been &amp; where to go next.</p>
       </header>
 
-      <div class="summary" id="summary"><!-- filled by app.js --></div>
+      <div class="search-wrap">
+        <input type="search" id="search" placeholder="🔍  Search any address or place…" autocomplete="off" />
+        <ul id="search-results" class="search-results"></ul>
+      </div>
 
       <div class="controls">
         <label class="field">
@@ -42,23 +44,7 @@
             <label class="toggle"><input type="checkbox" id="lyr-groc" /> Supermarkets</label>
           </div>
         </div>
-
-        <input type="search" id="search" placeholder="Search a past site…" autocomplete="off" />
-        <label class="field inline">
-          <span class="field-label">Sort by</span>
-          <select id="sort">
-            <option value="opportunity">Most worth revisiting</option>
-            <option value="recency">Longest since canvassed</option>
-            <option value="weighted_person_days">Canvassing coverage</option>
-            <option value="raw_person_days">Total person-days</option>
-            <option value="unique_people_count">Unique volunteers</option>
-            <option value="location_aliases">Name (A–Z)</option>
-          </select>
-        </label>
       </div>
-
-      <ul id="location-list" class="location-list"><!-- filled by app.js --></ul>
-      <footer class="panel-footer"><span id="count-line"></span></footer>
     </aside>
 
     <!-- ============ CENTER: MAP ============ -->
@@ -68,7 +54,7 @@
     <aside id="panel-right" class="panel">
       <header class="panel-header">
         <h2>Plan the week</h2>
-        <p class="panel-sub">Assign election districts to each shift.</p>
+        <p class="panel-sub">Add districts &amp; places to each shift.</p>
       </header>
       <div class="week-nav">
         <button id="week-prev" title="Previous week">‹</button>
@@ -77,8 +63,9 @@
       </div>
       <div class="shift-banner" id="shift-banner"></div>
       <p class="plan-hint">
-        Pick a <strong>shift</strong> below, then <strong>click an election district on the map</strong>
-        and choose <em>Add to shift</em> in its popup.
+        Pick a <strong>shift</strong> below, then <strong>click anything on the map</strong> — a
+        district, supermarket, subway stop, or a search result — and choose <em>Add to shift</em>
+        in its popup.
       </p>
       <div class="plan-days" id="plan-days"><!-- filled by app.js --></div>
       <div class="plan-actions">
@@ -111,25 +98,27 @@
         rank, so the highest and lowest are always easy to tell apart.</p>
 
       <h3>Using the site</h3>
-      <p><strong>Left panel — what the map shows</strong></p>
+      <p><strong>Left panel</strong></p>
       <ul>
+        <li><em>Search</em> — type any address or place to find it on the map (you can add it to a
+          shift too).</li>
         <li><em>Color the districts by</em> — switch the shading (priority, 2026 primary results,
           2025 mayor, turnout, or coverage).</li>
         <li><em>Show on the map</em> — toggle neighborhoods, subway stops, priority poll sites,
           early voting sites, and supermarkets.</li>
-        <li>The list shows past canvassing sites — search or sort it, click one to see it on the map.</li>
       </ul>
       <p><strong>The map</strong></p>
       <ul>
-        <li><strong>Click any election district</strong> to see its registered Democrats, 2026
-          primary result, and 2025 mayoral result — and to add it to a shift.</li>
+        <li><strong>Click an election district</strong> to see its registered Democrats, 2026
+          primary result, and 2025 mayoral result.</li>
+        <li>Click a <strong>supermarket, subway stop, or search result</strong> for its info too.</li>
       </ul>
       <p><strong>Right panel — plan the week</strong></p>
       <ul>
         <li>Use <strong>‹ ›</strong> to choose the week. Each day has an <strong>AM</strong> and a
           <strong>PM</strong> shift — click one to select it.</li>
-        <li>Then click districts on the map and choose <strong>Add to shift</strong>. Click a
-          district again (or the ✕) to remove it.</li>
+        <li>Then click anything on the map and choose <strong>Add to shift</strong>. Click it again
+          (or the ✕ on its chip) to remove it.</li>
         <li><strong>Print / Save PDF</strong> or <strong>Copy as text</strong> to share the plan.</li>
       </ul>
     </div>
@@ -137,6 +126,6 @@
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
           integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
-  <script src="app.js?v=5"></script>
+  <script src="app.js?v=6"></script>
 </body>
 </html>

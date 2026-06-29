@@ -8,9 +8,11 @@ computer — no login, no internet account, no servers to maintain.
 
 ## What you get
 
-**A map (light mode)** of every past canvassing location. Each dot is one spot;
-**bigger dots** were canvassed more. Click any dot to see its dates, person-days,
-and which volunteers went.
+A clean three-block layout: a **Left panel** (search + map controls), the **map**
+in the center, and a **Plan the week** panel on the right.
+
+**Search any address or place** (box at the top-left). Pick a result to drop a 📍
+pin on the map — and you can add that spot to a shift, just like anything else.
 
 **District shading** ("Color the districts by" dropdown) — pick one at a time:
 
@@ -39,19 +41,13 @@ calculated and how to use the site.
 - **Early voting sites** — purple **EV** pins.
 - **Supermarkets** — 🛒 pins for high-foot-traffic canvassing spots.
 
-## Layout
-
-- **Left block — Locations:** the map controls plus a searchable/sortable list of
-  past canvassing sites.
-- **Center — the map.**
-- **Right block — Plan the week:** plan by **shift and election district**.
-
-**Planning a week:**
+## Planning a week (right panel)
 
 - Every day has two shifts. **Mon–Fri:** AM 8a–12p, PM 4–8p. **Sat–Sun:** AM
   9a–1p, PM 12–4p.
-- Click a **shift** (right block) to select it, then **click an election district
-  on the map** and choose **Add to shift** in its popup. Click again to remove.
+- Click a **shift** to select it, then **click anything on the map** — an election
+  district, a supermarket, a subway stop, or a search result — and choose
+  **Add to shift** in its popup. Click it again (or the ✕ on its chip) to remove.
 - Your plan saves automatically (in the browser); **Print / Save as PDF** or
   **Copy as text** to share it with the team.
 

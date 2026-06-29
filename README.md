@@ -45,6 +45,11 @@ calculated and how to use the site.
 - **Early voting sites** — purple **EV** pins.
 - **Supermarkets** — 🛒 pins for high-foot-traffic canvassing spots.
 
+## Right panel
+
+Shows a live **NYC weather** card (current conditions + a 5-day forecast with rain
+chances, via the free Open-Meteo service) above the week planner.
+
 ## Planning a week (right panel)
 
 - Every day has two shifts. **Mon–Fri:** AM 8a–12p, PM 4–8p. **Sat–Sun:** AM

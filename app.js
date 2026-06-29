@@ -402,6 +402,49 @@
     w.document.write(html); w.document.close(); w.focus(); setTimeout(function () { w.print(); }, 250);
   }
 
+  // ====================================================================
+  //  WEATHER (Open-Meteo — free, no key, CORS-friendly)
+  // ====================================================================
+  var WX = "https://api.open-meteo.com/v1/forecast?latitude=40.78&longitude=-73.96" +
+    "&current=temperature_2m,weather_code&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max" +
+    "&temperature_unit=fahrenheit&timezone=America%2FNew_York&forecast_days=6";
+  function wxInfo(code) {
+    code = num(code);
+    if (code === 0) return { i: "☀️", t: "Clear" };
+    if (code <= 2) return { i: "🌤️", t: "Mostly sunny" };
+    if (code === 3) return { i: "☁️", t: "Cloudy" };
+    if (code <= 48) return { i: "🌫️", t: "Fog" };
+    if (code <= 57) return { i: "🌦️", t: "Drizzle" };
+    if (code <= 67) return { i: "🌧️", t: "Rain" };
+    if (code <= 77) return { i: "🌨️", t: "Snow" };
+    if (code <= 82) return { i: "🌦️", t: "Showers" };
+    if (code <= 86) return { i: "🌨️", t: "Snow showers" };
+    return { i: "⛈️", t: "Thunderstorms" };
+  }
+  function renderWeather(card, d) {
+    var cur = d.current || {}, day = d.daily || {};
+    var cw = wxInfo(cur.weather_code);
+    var html = '<div class="ic-title">NYC weather</div>' +
+      '<div class="wx-current"><span class="wx-temp">' + Math.round(num(cur.temperature_2m)) + "°</span>" +
+      '<span class="wx-cond">' + cw.i + " " + cw.t + "</span></div><div class='wx-days'>";
+    var times = day.time || [];
+    for (var i = 0; i < Math.min(times.length, 5); i++) {
+      var w = wxInfo(day.weather_code[i]);
+      var dn = i === 0 ? "Today" : DAY_NAMES[(parseISO(times[i]).getDay() + 6) % 7];
+      var pp = num(day.precipitation_probability_max[i]);
+      html += "<div class='wx-day'><span class='d'>" + dn + "</span><span class='i'>" + w.i + "</span>" +
+        "<span class='t'>" + Math.round(num(day.temperature_2m_max[i])) + "°/" + Math.round(num(day.temperature_2m_min[i])) + "°</span>" +
+        "<span class='p" + (pp < 20 ? " dry" : "") + "'>💧" + pp + "%</span></div>";
+    }
+    card.innerHTML = html + "</div>";
+  }
+  function initWeather() {
+    var card = document.getElementById("weather-card"); if (!card) return;
+    fetch(WX).then(function (r) { return r.json(); })
+      .then(function (d) { renderWeather(card, d); })
+      .catch(function () { card.innerHTML = '<div class="ic-title">NYC weather</div><div class="ic-muted">Weather unavailable right now.</div>'; });
+  }
+
   // ---- init ------------------------------------------------------------
   function makePanes() {
     [["pane-groc", 610], ["pane-early", 615], ["pane-polls", 620], ["pane-search", 630]].forEach(function (d) { map.createPane(d[0]); map.getPane(d[0]).style.zIndex = d[1]; });
@@ -472,6 +515,7 @@
     infoCtl.addTo(map);
 
     loadPlan();
+    initWeather();
     state.weekStart = nextMonday();
     state.activeDay = isoOf(state.weekStart);
 

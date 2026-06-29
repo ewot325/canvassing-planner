@@ -6,7 +6,7 @@
   <title>Canvassing Planner — Locations Map</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
         integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
-  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="style.css?v=5" />
 </head>
 <body>
   <div id="app">
@@ -35,7 +35,6 @@
         <div class="field">
           <span class="field-label">Show on the map</span>
           <div class="layer-toggles">
-            <label class="toggle"><input type="checkbox" id="lyr-sites" checked /> Canvassing sites</label>
             <label class="toggle"><input type="checkbox" id="lyr-hoods" /> Neighborhoods</label>
             <label class="toggle"><input type="checkbox" id="lyr-subway" /> Subway stops</label>
             <label class="toggle"><input type="checkbox" id="lyr-polls" /> Priority Election Day poll sites</label>
@@ -91,8 +90,53 @@
     </aside>
   </div>
 
+  <button id="info-btn" class="info-btn" title="How this works" aria-label="How this works">?</button>
+  <div id="info-modal" class="modal hidden" role="dialog" aria-modal="true">
+    <div class="modal-card">
+      <button id="info-close" class="modal-close" aria-label="Close">✕</button>
+      <h2>How this works</h2>
+
+      <h3>How “Priority for next week” is calculated</h3>
+      <p>The default shading highlights the election districts that are the best use of
+        canvassing time: places with <strong>many Democratic voters</strong> that the team has
+        <strong>not canvassed much yet</strong>.</p>
+      <p>For each district it combines two things:</p>
+      <ul>
+        <li><strong>Turnout</strong> — how many people voted in the 2025 Democratic primary
+          (more voters = more valuable).</li>
+        <li><strong>Coverage</strong> — how much canvassing that area has already received.</li>
+      </ul>
+      <p>Districts that are <strong>high&nbsp;turnout but low&nbsp;coverage</strong> get the
+        darkest red. Already-covered or low-turnout districts fade to light. Colors are spread by
+        rank, so the highest and lowest are always easy to tell apart.</p>
+
+      <h3>Using the site</h3>
+      <p><strong>Left panel — what the map shows</strong></p>
+      <ul>
+        <li><em>Color the districts by</em> — switch the shading (priority, 2026 primary results,
+          2025 mayor, turnout, or coverage).</li>
+        <li><em>Show on the map</em> — toggle neighborhoods, subway stops, priority poll sites,
+          early voting sites, and supermarkets.</li>
+        <li>The list shows past canvassing sites — search or sort it, click one to see it on the map.</li>
+      </ul>
+      <p><strong>The map</strong></p>
+      <ul>
+        <li><strong>Click any election district</strong> to see its registered Democrats, 2026
+          primary result, and 2025 mayoral result — and to add it to a shift.</li>
+      </ul>
+      <p><strong>Right panel — plan the week</strong></p>
+      <ul>
+        <li>Use <strong>‹ ›</strong> to choose the week. Each day has an <strong>AM</strong> and a
+          <strong>PM</strong> shift — click one to select it.</li>
+        <li>Then click districts on the map and choose <strong>Add to shift</strong>. Click a
+          district again (or the ✕) to remove it.</li>
+        <li><strong>Print / Save PDF</strong> or <strong>Copy as text</strong> to share the plan.</li>
+      </ul>
+    </div>
+  </div>
+
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
           integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
-  <script src="app.js"></script>
+  <script src="app.js?v=5"></script>
 </body>
 </html>

@@ -26,9 +26,11 @@ and which volunteers went.
 Dem primary turnout + who won and by how much, and 2025 mayoral primary turnout
 + who led. The popup also has an **Add to shift** button for planning (below).
 
+There's a **"?" button** at the top of the map that explains how Priority is
+calculated and how to use the site.
+
 **Map layers** ("Show on the map" checkboxes) — turn these on/off independently:
 
-- **Canvassing sites** (on by default) — the dots.
 - **Neighborhoods** — labeled neighborhood areas for orientation.
 - **Subway stops** — colored by train line (official MTA colors); station names
   appear when you zoom in.

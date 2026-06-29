@@ -48,7 +48,7 @@
   var RAMPS = { opportunity: [[255, 247, 232], [150, 0, 12]], turnout: [[233, 242, 255], [3, 41, 99]], coverage: [[233, 250, 236], [0, 78, 33]] };
 
   var state = {
-    locations: [], summary: null, locById: {}, markersById: {},
+    locations: [], summary: null, locById: {},
     geo: {}, edProps: {},
     selectedId: null, sort: "opportunity", search: "",
     shadingMode: "opportunity",
@@ -56,7 +56,7 @@
     pcts: {},
   };
 
-  var map, legend, districtLayer, markerLayer;
+  var map, legend, districtLayer;
   var overlay = { hoods: null, subway: null, polls: null, early: null, groc: null };
   var R; // single shared canvas renderer for all vector layers (so clicks hit-test correctly)
   var edCentroid = {};
@@ -145,12 +145,11 @@
     }).join("");
     document.getElementById("count-line").textContent = list.length + " of " + state.locations.length + " past sites";
     Array.prototype.forEach.call(ul.querySelectorAll(".loc-row"), function (li) {
-      li.addEventListener("click", function () { selectLocation(li.getAttribute("data-id"), true); });
+      li.addEventListener("click", function () { selectLocation(li.getAttribute("data-id")); });
     });
   }
 
   // ---- canvassing site markers -----------------------------------------
-  function radiusFor(w) { return 5 + Math.sqrt(num(w) / maxWeighted) * 18; }
   function sitePopup(loc) {
     var people = pipeList(loc.unique_people), dates = pipeList(loc.dates_active), rec = recencyLabel(loc);
     return '<div class="popup-title">' + escapeHtml(firstAlias(loc)) + "</div><div class='popup-grid'>" +
@@ -161,20 +160,10 @@
       '<div class="popup-dates"><strong>Dates:</strong> ' + (dates.length ? escapeHtml(dates.join(", ")) : "—") + "</div>" +
       (people.length ? '<div class="popup-dates"><strong>Volunteers:</strong> ' + escapeHtml(people.slice(0, 12).join(", ")) + (people.length > 12 ? " +" + (people.length - 12) + " more" : "") + "</div>" : "");
   }
-  function renderMarkers() {
-    markerLayer.clearLayers(); state.markersById = {};
-    state.locations.forEach(function (loc) {
-      if (!isFinite(loc.latitude) || !isFinite(loc.longitude)) return;
-      var m = L.circleMarker([loc.latitude, loc.longitude], { radius: radiusFor(loc.weighted_person_days), color: "#fff", weight: 1.5, fillColor: "#243b53", fillOpacity: 0.9, renderer: R });
-      m.bindPopup(sitePopup(loc), { maxWidth: 320 });
-      m.on("click", function () { selectLocation(loc.location_id, false); });
-      m.addTo(markerLayer); state.markersById[loc.location_id] = m;
-    });
-  }
-  function selectLocation(id, fromList) {
+  function selectLocation(id) {
     state.selectedId = id; var loc = state.locById[id]; if (!loc) return;
-    var m = state.markersById[id];
-    if (m) { if (fromList) map.setView([loc.latitude, loc.longitude], Math.max(map.getZoom(), 15)); m.openPopup(); }
+    map.setView([loc.latitude, loc.longitude], Math.max(map.getZoom(), 15));
+    L.popup({ maxWidth: 320 }).setLatLng([loc.latitude, loc.longitude]).setContent(sitePopup(loc)).openOn(map);
     renderList();
   }
 
@@ -270,7 +259,6 @@
   // ====================================================================
   //  POINT OVERLAYS
   // ====================================================================
-  function toggleSites(on) { if (on) markerLayer.addTo(map); else map.removeLayer(markerLayer); }
   function toggleHoods(on) {
     if (!on) { if (overlay.hoods) map.removeLayer(overlay.hoods); return; }
     if (overlay.hoods) { overlay.hoods.addTo(map); return; }
@@ -334,18 +322,17 @@
   function updateLegend() {
     if (!legend) return;
     var el = legend.getContainer(), mode = state.shadingMode;
-    var dotNote = '<div class="dotnote"><span class="dot"></span> Dot = past canvassing site (bigger = more)</div>';
-    if (mode === "none") { el.innerHTML = "<h4>Map</h4>" + dotNote; return; }
+    if (mode === "none") { el.innerHTML = "<h4>Map</h4><div class='sub'>Click a district for details.</div>"; return; }
     if (mode === "mayor2025") {
-      el.innerHTML = "<h4>2025 Mayor — who led each ED</h4>" + cat(MAYOR_COLORS["Zohran Kwame Mamdani"], "Mamdani") + cat(MAYOR_COLORS["Andrew M. Cuomo"], "Cuomo") + cat(MAYOR_COLORS["Brad Lander"], "Lander") + '<div class="sub">Stronger color = bigger win.</div>' + dotNote; return;
+      el.innerHTML = "<h4>2025 Mayor — who led each ED</h4>" + cat(MAYOR_COLORS["Zohran Kwame Mamdani"], "Mamdani") + cat(MAYOR_COLORS["Andrew M. Cuomo"], "Cuomo") + cat(MAYOR_COLORS["Brad Lander"], "Lander") + '<div class="sub">Stronger color = bigger win.</div>'; return;
     }
     if (mode === "boreslasher") {
-      el.innerHTML = "<h4>2026 Dem Primary — who won each ED</h4>" + cat(BL_COLORS.Bores, "Bores") + cat(BL_COLORS.Lasher, "Lasher") + cat(BL_COLORS.Tie, "Tie / other") + '<div class="sub">Stronger color = bigger margin.</div>' + dotNote; return;
+      el.innerHTML = "<h4>2026 Dem Primary — who won each ED</h4>" + cat(BL_COLORS.Bores, "Bores") + cat(BL_COLORS.Lasher, "Lasher") + cat(BL_COLORS.Tie, "Tie / other") + '<div class="sub">Stronger color = bigger margin.</div>'; return;
     }
     var titles = { opportunity: "Priority for next week", turnout: "2025 Dem primary turnout", coverage: "Canvassing coverage so far" };
     var ends = { opportunity: ["covered / low turnout", "high turnout, under-canvassed"], turnout: ["fewer voters", "more voters"], coverage: ["not canvassed", "heavily canvassed"] };
     var ramp = ""; for (var i = 0; i <= 8; i++) ramp += '<span style="background:' + rampCol(mode, i / 8) + '"></span>';
-    el.innerHTML = "<h4>" + titles[mode] + "</h4><div class='ramp'>" + ramp + "</div><div class='ends'><span>" + ends[mode][0] + "</span><span>" + ends[mode][1] + "</span></div>" + dotNote;
+    el.innerHTML = "<h4>" + titles[mode] + "</h4><div class='ramp'>" + ramp + "</div><div class='ends'><span>" + ends[mode][0] + "</span><span>" + ends[mode][1] + "</span></div>";
   }
   function cat(color, label) { return '<div class="cat"><span class="box" style="background:' + color + '"></span>' + escapeHtml(label) + "</div>"; }
 
@@ -433,7 +420,6 @@
     document.getElementById("search").addEventListener("input", function (e) { state.search = e.target.value; renderList(); });
     document.getElementById("sort").addEventListener("change", function (e) { state.sort = e.target.value; renderList(); });
     document.getElementById("shading-mode").addEventListener("change", function (e) { state.shadingMode = e.target.value; refreshDistricts(); });
-    document.getElementById("lyr-sites").addEventListener("change", function (e) { toggleSites(e.target.checked); });
     document.getElementById("lyr-hoods").addEventListener("change", function (e) { toggleHoods(e.target.checked); });
     document.getElementById("lyr-subway").addEventListener("change", function (e) { toggleSubway(e.target.checked); });
     document.getElementById("lyr-polls").addEventListener("change", function (e) { togglePolls(e.target.checked); });
@@ -444,6 +430,11 @@
     document.getElementById("plan-print").addEventListener("click", printPlan);
     document.getElementById("plan-copy").addEventListener("click", copyPlan);
     document.getElementById("plan-clear").addEventListener("click", function () { if (!confirm("Remove all districts from this week's plan?")) return; weekDays().forEach(function (d) { delete state.plan[isoOf(d)]; }); savePlan(); refreshDistricts(); renderPlan(); });
+    var modal = document.getElementById("info-modal");
+    document.getElementById("info-btn").addEventListener("click", function () { modal.classList.remove("hidden"); });
+    document.getElementById("info-close").addEventListener("click", function () { modal.classList.add("hidden"); });
+    modal.addEventListener("click", function (e) { if (e.target === modal) modal.classList.add("hidden"); });
+    document.addEventListener("keydown", function (e) { if (e.key === "Escape") modal.classList.add("hidden"); });
     map.on("zoomend", updateZoomClass);
     map.on("popupopen", function (e) {
       var pop = e.popup, root = pop.getElement(); if (!root) return;
@@ -461,7 +452,6 @@
     map = L.map("map", { zoomControl: true, preferCanvas: true }).setView([40.78, -73.96], 12);
     L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", { attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>', maxZoom: 19 }).addTo(map);
     makePanes();
-    markerLayer = L.layerGroup();
     legend = L.control({ position: "bottomright" });
     legend.onAdd = function () { return L.DomUtil.create("div", "legend"); };
     legend.addTo(map);
@@ -501,7 +491,6 @@
         buildDistrictLayer(districts);
       }
 
-      renderMarkers(); markerLayer.addTo(map);
       buildSummary(); renderList(); renderPlan(); updateLegend();
       var pts = state.locations.map(function (l) { return [l.latitude, l.longitude]; });
       if (pts.length) { map.invalidateSize(); map.fitBounds(pts, { padding: [40, 40], maxZoom: 15, animate: false }); }

@@ -4,7 +4,7 @@
 (function () {
   "use strict";
 
-  var DV = "?v=9"; // cache-buster for data files (bump when data changes)
+  var DV = "?v=10"; // cache-buster for data files (bump when data changes)
   var DATA = {
     districts: "data/districts.geojson",
     boreslasher: "data/bores_lasher_results.geojson",
@@ -14,6 +14,7 @@
     polls: "data/election_day_poll_sites.geojson",
     early: "data/early_voting_sites.geojson",
     groc: "data/supermarkets.geojson",
+    availability: "data/fellow_availability.json",
   };
   // Photon (OpenStreetMap) finds places/POIs ("Hunter College"), not just addresses.
   // Biased to NYC by proximity + bounding box.
@@ -55,7 +56,7 @@
     geo: {}, edProps: {},
     shadingMode: "none",
     weekStart: null, activeDay: null, activeShift: "AM", plan: {},
-    pcts: {}, wx: null, events: [],
+    pcts: {}, wx: null, events: [], avail: null,
   };
 
   var map, legend, districtLayer, R, searchMarker = null, searchTimer = null, searchAbort = null;
@@ -364,6 +365,28 @@
   // ====================================================================
   function nextMonday() { var day = TODAY.getDay(), delta = ((8 - day) % 7) || 7; return addDays(TODAY, delta); }
   function weekDays() { var out = []; for (var i = 0; i < 7; i++) out.push(addDays(state.weekStart, i)); return out; }
+  // Aggregated fellow counts for the planned week, bridged (counts only, no PII)
+  // from the scheduling project's Supabase via export_fellow_availability.py.
+  function weekAvail() {
+    if (!state.avail || !state.avail.weeks) return null;
+    return state.avail.weeks[isoOf(state.weekStart)] || null;
+  }
+  function fellowCount(date, shift) {
+    var wa = weekAvail(); if (!wa || !wa.shift_counts) return null;
+    var key = dowName(date).toLowerCase() + "_inperson_" + shift.toLowerCase();
+    return wa.shift_counts[key] || 0;
+  }
+  function fellowBadge(date, shift) {
+    var n = fellowCount(date, shift);
+    if (n === null) return ""; // no signup data for this week yet
+    return '<span class="sh-fellows' + (n ? "" : " zero") + '" title="Volunteers available for this shift (from sign-ups)">' +
+      "👥 " + n + "</span>";
+  }
+  function loadAvailability() {
+    fetch(DATA.availability + DV).then(function (r) { return r.json(); }).then(function (a) {
+      state.avail = a; renderPlan();
+    }).catch(function () { /* file optional — planner works without it */ });
+  }
   function renderShiftBanner() {
     var b = document.getElementById("shift-banner"); if (!b) return; var d = parseISO(state.activeDay);
     b.innerHTML = "Now adding to <strong>" + dowName(d) + " " + prettyDate(d) + " · " + state.activeShift + " (" + shiftTime(d, state.activeShift) + ")</strong>";
@@ -380,7 +403,7 @@
           return '<li class="ed-chip"><span class="ed-go" data-lat="' + it.lat + '" data-lng="' + it.lng + '">' + (it.icon ? escapeHtml(it.icon) + " " : "") + escapeHtml(it.label) +
             '</span><button class="rm-btn" data-rm="' + escAttr(it.id) + '" data-day="' + iso + '" data-shift="' + sh + '">✕</button></li>';
         }).join("");
-        return '<div class="shift-row' + isActive + '" data-day="' + iso + '" data-shift="' + sh + '"><div class="shift-head"><span class="sh-name">' + sh + '</span><span class="sh-time">' + shiftTime(d, sh) + '</span><span class="sh-count">' + (items.length ? items.length + " stop" + (items.length > 1 ? "s" : "") : "select") + "</span></div><ul class='ed-chips'>" + chips + "</ul></div>";
+        return '<div class="shift-row' + isActive + '" data-day="' + iso + '" data-shift="' + sh + '"><div class="shift-head"><span class="sh-name">' + sh + '</span><span class="sh-time">' + shiftTime(d, sh) + '</span>' + fellowBadge(d, sh) + '<span class="sh-count">' + (items.length ? items.length + " stop" + (items.length > 1 ? "s" : "") : "select") + "</span></div><ul class='ed-chips'>" + chips + "</ul></div>";
       }).join("");
       return '<div class="day-card"><div class="day-head static"><span class="d-name">' + dowName(d) + " " + prettyDate(d) + "</span></div>" + shifts + "</div>";
     }).join("");
@@ -659,6 +682,7 @@
     initWeather();
     state.weekStart = nextMonday();
     state.activeDay = isoOf(state.weekStart);
+    loadAvailability();
 
     Promise.all([
       fetch(DATA.districts + DV).then(function (r) { return r.json(); }).catch(function () { return null; }),

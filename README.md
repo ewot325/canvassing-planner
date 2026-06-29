@@ -47,10 +47,15 @@ calculated and how to use the site.
 - **Early voting sites** — purple **EV** pins.
 - **Supermarkets** — 🛒 pins for high-foot-traffic canvassing spots.
 
-## Weather
+## Left-panel cards
 
-The left panel shows a live **NYC weather** card (current conditions + a 5-day
-forecast with rain chances, via the free Open-Meteo service).
+- **NYC weather** — live current conditions + a 5-day forecast with rain chances
+  (free Open-Meteo service).
+- **Events this week** — canvass-worthy community events (farmers markets, street/
+  block festivals, sidewalk sales, health fairs) **inside the district**, for the
+  week you're planning. Pulled live from NYC's permitted-events feed (SAPO),
+  filtered by community board. Click an event to find it on the map and add it to a
+  shift. Out-of-district noise (Harlem, the Village, Inwood, etc.) is filtered out.
 
 ## Planning a week (right panel)
 

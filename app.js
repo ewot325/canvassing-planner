@@ -422,6 +422,121 @@
   }
 
   // ====================================================================
+  //  COMMUNITY EVENTS (NYC permitted events / SAPO — free, CORS-friendly)
+  //  Curated "street & neighborhood" types, inside the district, this week.
+  // ====================================================================
+  var EVENTS_API = "https://data.cityofnewyork.us/resource/tvpp-9vvx.json";
+  var EVENT_TYPES = ["Farmers Market", "Street Festival", "Single Block Festival", "Block Party", "Sidewalk Sale", "Health Fair"];
+  var NY12_CB = { 4: 1, 5: 1, 6: 1, 7: 1, 8: 1 }; // fallback when an event can't be geocoded
+  var eventMarker = null;
+
+  // point-in-polygon test against the district polygons (built when districts load)
+  function buildDistrictIndex(features) {
+    state.distIdx = features.map(function (f) {
+      var g = f.geometry, polys = g.type === "MultiPolygon" ? g.coordinates : [g.coordinates];
+      var bb = [1e9, 1e9, -1e9, -1e9];
+      polys.forEach(function (poly) { poly[0].forEach(function (pt) { if (pt[0] < bb[0]) bb[0] = pt[0]; if (pt[1] < bb[1]) bb[1] = pt[1]; if (pt[0] > bb[2]) bb[2] = pt[0]; if (pt[1] > bb[3]) bb[3] = pt[1]; }); });
+      return { bb: bb, polys: polys };
+    });
+  }
+  function pipRing(x, y, ring) {
+    var inside = false, n = ring.length, j = n - 1;
+    for (var i = 0; i < n; i++) {
+      var xi = ring[i][0], yi = ring[i][1], xj = ring[j][0], yj = ring[j][1];
+      if (((yi > y) !== (yj > y)) && (x < (xj - xi) * (y - yi) / ((yj - yi) || 1e-12) + xi)) inside = !inside;
+      j = i;
+    }
+    return inside;
+  }
+  function pipPoly(x, y, poly) { if (!pipRing(x, y, poly[0])) return false; for (var i = 1; i < poly.length; i++) if (pipRing(x, y, poly[i])) return false; return true; }
+  function inDistrict(lng, lat) {
+    if (!state.distIdx) return false;
+    for (var k = 0; k < state.distIdx.length; k++) {
+      var d = state.distIdx[k], b = d.bb;
+      if (lng < b[0] || lng > b[2] || lat < b[1] || lat > b[3]) continue;
+      for (var p = 0; p < d.polys.length; p++) if (pipPoly(lng, lat, d.polys[p])) return true;
+    }
+    return false;
+  }
+  function cbNum(s) { var m = String(s || "").match(/\d+/); return m ? +m[0] : 0; }
+  function evIcon(t) { return /farmers/i.test(t) ? "🥕" : /health/i.test(t) ? "➕" : "🎪"; }
+  function eventsUrl() {
+    var start = isoOf(state.weekStart) + "T00:00:00", end = isoOf(addDays(state.weekStart, 7)) + "T00:00:00";
+    var types = EVENT_TYPES.map(function (t) { return "event_type='" + t + "'"; }).join(" OR ");
+    var where = "event_borough='Manhattan' AND start_date_time>='" + start + "' AND start_date_time<'" + end + "' AND (" + types + ")";
+    return EVENTS_API + "?$order=start_date_time&$limit=80&$where=" + encodeURIComponent(where);
+  }
+  function parseLoc(loc) {
+    loc = String(loc || ""); var main = loc.split(/ between /i)[0].trim();
+    var cross = "", m = loc.match(/ between (.+?)(?: and )/i); if (m) cross = m[1].trim();
+    return { main: main, cross: cross };
+  }
+  // Photon does NYC intersections; GeoSearch does not. We only trust the point
+  // when the result name has a street number (a real intersection, not an avenue fallback).
+  function geocodeEvent(loc) {
+    var p = parseLoc(loc); if (!p.main) return Promise.resolve(null);
+    var q = (p.cross ? p.main + " & " + p.cross : p.main) + " Manhattan New York";
+    return fetch("https://photon.komoot.io/api/?limit=1&lat=40.77&lon=-73.96&q=" + encodeURIComponent(q))
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        var f = d.features && d.features[0]; if (!f) return null;
+        var label = (f.properties.name || "") + " " + (f.properties.street || "");
+        return { lng: f.geometry.coordinates[0], lat: f.geometry.coordinates[1], hasNum: /\d/.test(label) };
+      }).catch(function () { return null; });
+  }
+  function ecHeader() { var ds = weekDays(); return '<div class="ic-title">Events · ' + prettyDate(ds[0]) + "–" + prettyDate(ds[6]) + "</div>"; }
+  function loadEvents() {
+    var card = document.getElementById("events-card"); if (!card) return;
+    card.innerHTML = ecHeader() + '<div class="ic-muted">Loading events…</div>';
+    var reqWeek = state.weekStart;
+    fetch(eventsUrl()).then(function (r) { return r.json(); }).then(function (rows) {
+      // Community board is the authoritative in-district filter (reliable). Geocoding
+      // is only used, best-effort, to place a map pin — never to decide in/out.
+      var seen = {};
+      var inDist = (rows || []).filter(function (e) {
+        if (!NY12_CB[cbNum(e.community_board)]) return false;
+        var key = (e.event_name || "") + "|" + (e.start_date_time || "").slice(0, 10);
+        if (seen[key]) return false; seen[key] = 1; return true;
+      });
+      return Promise.all(inDist.map(function (e) {
+        return geocodeEvent(e.event_location).then(function (geo) {
+          var lat = null, lng = null;
+          if (geo && geo.hasNum && inDistrict(geo.lng, geo.lat)) { lat = geo.lat; lng = geo.lng; }
+          return { name: e.event_name, type: e.event_type, date: (e.start_date_time || "").slice(0, 10), loc: e.event_location, lat: lat, lng: lng };
+        });
+      }));
+    }).then(function (arr) {
+      if (reqWeek !== state.weekStart) return; // week changed mid-load
+      state.events = arr; renderEvents();
+    }).catch(function () { card.innerHTML = ecHeader() + '<div class="ic-muted">Events unavailable right now.</div>'; });
+  }
+  function renderEvents() {
+    var card = document.getElementById("events-card"); if (!card) return;
+    var evs = state.events || [];
+    if (!evs.length) { card.innerHTML = ecHeader() + '<div class="ic-muted">No district events found this week.</div>'; return; }
+    card.innerHTML = ecHeader() + '<ul class="ev-list">' + evs.map(function (e, i) {
+      var d = parseISO(e.date);
+      return '<li class="ev-row" data-i="' + i + '"><span class="ev-d">' + dowName(d) + " " + prettyDate(d) + "</span>" +
+        '<span class="ev-n">' + evIcon(e.type) + " " + escapeHtml(e.name) + "</span></li>";
+    }).join("") + "</ul>";
+    Array.prototype.forEach.call(card.querySelectorAll(".ev-row"), function (li) {
+      li.addEventListener("click", function () { focusEvent(evs[+li.getAttribute("data-i")]); });
+    });
+  }
+  function focusEvent(e) {
+    if (!e) return;
+    if (!isFinite(e.lat) || !isFinite(e.lng)) { alert(e.name + "\n" + (e.loc || "") + "\n(couldn't pinpoint on the map)"); return; }
+    if (eventMarker) map.removeLayer(eventMarker);
+    eventMarker = L.marker([e.lat, e.lng], { icon: pinIcon("event-pin", "#b8860b", "📅"), pane: "pane-search" }).addTo(map);
+    var d = parseISO(e.date);
+    eventMarker.bindPopup('<div class="popup-title">' + evIcon(e.type) + " " + escapeHtml(e.name) + "</div><div class='sub'>" +
+      escapeHtml(e.type) + " · " + dowName(d) + " " + prettyDate(d) + "</div><div class='popup-dates'>" + escapeHtml(e.loc || "") + "</div>" +
+      addBtnHtml({ k: "pt", id: "evt:" + e.lat.toFixed(5) + "," + e.lng.toFixed(5), label: e.name + " (" + prettyDate(d) + ")", lat: e.lat, lng: e.lng, icon: "📅" }), { maxWidth: 280 });
+    map.setView([e.lat, e.lng], 16);
+    eventMarker.openPopup();
+  }
+
+  // ====================================================================
   //  WEATHER (Open-Meteo — free, no key, CORS-friendly)
   // ====================================================================
   var WX = "https://api.open-meteo.com/v1/forecast?latitude=40.78&longitude=-73.96" +
@@ -492,8 +607,8 @@
     document.getElementById("lyr-polls").addEventListener("change", function (e) { togglePolls(e.target.checked); });
     document.getElementById("lyr-early").addEventListener("change", function (e) { toggleEarly(e.target.checked); });
     document.getElementById("lyr-groc").addEventListener("change", function (e) { toggleGroc(e.target.checked); });
-    document.getElementById("week-prev").addEventListener("click", function () { state.weekStart = addDays(state.weekStart, -7); state.activeDay = isoOf(state.weekStart); refreshDistricts(); renderPlan(); });
-    document.getElementById("week-next").addEventListener("click", function () { state.weekStart = addDays(state.weekStart, 7); state.activeDay = isoOf(state.weekStart); refreshDistricts(); renderPlan(); });
+    document.getElementById("week-prev").addEventListener("click", function () { state.weekStart = addDays(state.weekStart, -7); state.activeDay = isoOf(state.weekStart); refreshDistricts(); renderPlan(); loadEvents(); });
+    document.getElementById("week-next").addEventListener("click", function () { state.weekStart = addDays(state.weekStart, 7); state.activeDay = isoOf(state.weekStart); refreshDistricts(); renderPlan(); loadEvents(); });
     document.getElementById("plan-print").addEventListener("click", printPlan);
     document.getElementById("plan-copy").addEventListener("click", copyPlan);
     document.getElementById("plan-clear").addEventListener("click", function () { if (!confirm("Remove everything from this week's plan?")) return; weekDays().forEach(function (d) { delete state.plan[isoOf(d)]; }); savePlan(); refreshDistricts(); renderPlan(); });
@@ -564,8 +679,10 @@
         });
         maxOpportunity = districts.features.reduce(function (m, f) { return Math.max(m, districtMetric(f.properties, "opportunity")); }, 0.0001);
         buildPercentiles(districts.features);
+        buildDistrictIndex(districts.features);
         buildDistrictLayer(districts);
         toggleLines(true); // default: ED + AD boundary lines on
+        loadEvents();
         map.invalidateSize();
         try { map.fitBounds(districtLayer.getBounds(), { padding: [20, 20], animate: false }); } catch (e) {}
       }

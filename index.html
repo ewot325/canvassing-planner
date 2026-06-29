@@ -49,6 +49,18 @@
         </div>
       </div>
 
+      <div class="rec-card">
+        <div class="rec-head">
+          <span class="rec-title">🎯 Top targets this week</span>
+          <select id="rec-mode" class="rec-mode" title="What to optimize for">
+            <option value="persuasion">Persuasion</option>
+            <option value="gotv">Turnout (GOTV)</option>
+          </select>
+        </div>
+        <ul class="rec-list" id="rec-list"></ul>
+        <p class="rec-note">Ranked by goal, minus districts you've already canvassed. Click a district to zoom; “Add” puts it in the selected shift.</p>
+      </div>
+
       <div class="info-cards">
         <div class="info-card" id="weather-card">
           <div class="ic-title">NYC weather</div>
@@ -79,17 +91,6 @@
       <div class="fellows-bar">
         <span class="fellows-status" id="fellows-status"></span>
         <button id="fellows-refresh" type="button" title="Pull the latest assigned-volunteer counts from the staff schedule">↻ Update assigned counts</button>
-      </div>
-      <div class="rec-card">
-        <div class="rec-head">
-          <span class="rec-title">🎯 Top targets this week</span>
-          <select id="rec-mode" class="rec-mode" title="What to optimize for">
-            <option value="persuasion">Persuasion</option>
-            <option value="gotv">Turnout (GOTV)</option>
-          </select>
-        </div>
-        <ul class="rec-list" id="rec-list"></ul>
-        <p class="rec-note">Ranked by goal, minus districts you've already canvassed. Click a district to zoom; “Add” puts it in the selected shift.</p>
       </div>
       <p class="plan-hint">
         Pick a <strong>shift</strong> below, then <strong>click anything on the map</strong> — a

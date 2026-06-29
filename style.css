@@ -265,6 +265,9 @@ html, body {
 .rec-add { margin-left: 21px; font-size: 11px; cursor: pointer; color: var(--accent); background: var(--panel); border: 1px solid var(--border); border-radius: 7px; padding: 3px 8px; }
 .rec-add:hover { background: var(--panel-2); }
 .rec-add.in { color: #0a6b3b; border-color: #b6e0c7; background: #e4f5ea; }
+.rec-autoplan { display: block; width: calc(100% - 16px); margin: 6px 8px 2px; padding: 7px 10px; font-size: 12px; font-weight: 700; cursor: pointer; color: #fff; background: var(--accent); border: none; border-radius: 8px; }
+.rec-autoplan:hover { filter: brightness(1.07); }
+.rec-autoplan-msg { font-size: 11px; color: #0a6b3b; padding: 0 10px; min-height: 14px; }
 .rec-empty, .rec-note { font-size: 11px; color: var(--muted); }
 .rec-empty { padding: 8px; list-style: none; }
 .rec-note { margin: 0; padding: 6px 10px 8px; border-top: 1px solid var(--border); line-height: 1.35; }

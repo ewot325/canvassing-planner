@@ -511,6 +511,57 @@
       });
     });
   }
+  // Auto-fill every EMPTY in-person shift this week with a geographic cluster of
+  // top-ranked districts (by the selected goal), each cluster sized to cover ~a
+  // team's walkable turf for one shift. Never touches shifts you've already filled.
+  var AUTOPLAN_TARGET_ACRES = 20; // roughly one 4-hour shift of walkable ground
+  var AUTOPLAN_MAX_PER_SHIFT = 6;
+  function autoPlanWeek() {
+    var msg = document.getElementById("rec-autoplan-msg");
+    var g = state.geo.districts; if (!g || !g.features) return;
+    var mode = state.recMode;
+    // candidate districts (need a center + an area), ranked by the chosen goal
+    var cand = [];
+    Object.keys(state.edProps).forEach(function (ed) {
+      var p = state.edProps[ed], c = edCentroid[ed], acres = num(p.area_acres);
+      if (!c || acres <= 0) return;
+      cand.push({ ed: ed, score: districtMetric(p, mode), lat: c.lat, lng: c.lng, acres: acres });
+    });
+    cand.sort(function (a, b) { return b.score - a.score; });
+    var used = {};
+    weekDays().forEach(function (d) {
+      var iso = isoOf(d);
+      ["AM", "PM"].forEach(function (sh) { shiftArr(iso, sh, false).forEach(function (it) { if (it.k === "ed") used[it.id] = 1; }); });
+    });
+    function dist2(a, b) { var dy = (a.lat - b.lat) * 111, dx = (a.lng - b.lng) * 84; return dy * dy + dx * dx; }
+    function nextSeed() { for (var i = 0; i < cand.length; i++) if (!used[cand[i].ed]) return cand[i]; return null; }
+
+    var filledShifts = 0, totalEds = 0;
+    weekDays().forEach(function (d) {
+      var iso = isoOf(d);
+      ["AM", "PM"].forEach(function (sh) {
+        if (shiftArr(iso, sh, false).length) return; // empty shifts only
+        var seed = nextSeed(); if (!seed) return;
+        var pool = cand.filter(function (x) { return !used[x.ed]; });
+        pool.sort(function (a, b) { return dist2(a, seed) - dist2(b, seed); }); // seed is nearest to itself
+        var cluster = [], area = 0;
+        for (var i = 0; i < pool.length && area < AUTOPLAN_TARGET_ACRES && cluster.length < AUTOPLAN_MAX_PER_SHIFT; i++) {
+          cluster.push(pool[i]); used[pool[i].ed] = 1; area += pool[i].acres;
+        }
+        if (!cluster.length) return;
+        var arr = shiftArr(iso, sh, true);
+        cluster.forEach(function (x) { arr.push({ k: "ed", id: x.ed, label: "ED " + edShort(x.ed), lat: x.lat, lng: x.lng, icon: "🗳" }); });
+        filledShifts++; totalEds += cluster.length;
+      });
+    });
+    savePlan(); refreshDistricts(); renderPlan();
+    if (msg) {
+      msg.textContent = filledShifts
+        ? "Filled " + filledShifts + " empty shift" + (filledShifts > 1 ? "s" : "") + " with " + totalEds + " districts (" + (mode === "gotv" ? "turnout" : "persuasion") + ")."
+        : "Every shift already has districts — nothing to fill.";
+      setTimeout(function () { if (msg) msg.textContent = ""; }, 7000);
+    }
+  }
   function renderPlan() {
     renderWeekLabel(); renderShiftBanner(); renderWeather(); renderFellowStatus(); renderRecommendations(); renderEvents();
     var container = document.getElementById("plan-days");
@@ -753,6 +804,7 @@
     document.getElementById("week-prev").addEventListener("click", function () { state.weekStart = addDays(state.weekStart, -7); state.activeDay = isoOf(state.weekStart); refreshDistricts(); renderPlan(); loadEvents(); });
     document.getElementById("week-next").addEventListener("click", function () { state.weekStart = addDays(state.weekStart, 7); state.activeDay = isoOf(state.weekStart); refreshDistricts(); renderPlan(); loadEvents(); });
     document.getElementById("rec-mode").addEventListener("change", function (e) { state.recMode = e.target.value; renderRecommendations(); });
+    document.getElementById("rec-autoplan").addEventListener("click", autoPlanWeek);
     document.getElementById("fellows-refresh").addEventListener("click", refreshFellows);
     document.getElementById("plan-print").addEventListener("click", printPlan);
     document.getElementById("plan-copy").addEventListener("click", copyPlan);

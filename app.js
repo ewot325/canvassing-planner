@@ -4,9 +4,11 @@
 (function () {
   "use strict";
 
+  var DV = "?v=8"; // cache-buster for data files (bump when data changes)
   var DATA = {
     districts: "data/districts.geojson",
     boreslasher: "data/bores_lasher_results.geojson",
+    adlines: "data/ad_boundaries.geojson",
     neighborhoods: "data/neighborhoods.geojson",
     subway: "data/subway_stations.geojson",
     polls: "data/election_day_poll_sites.geojson",
@@ -16,12 +18,14 @@
   // Photon (OpenStreetMap) finds places/POIs ("Hunter College"), not just addresses.
   // Biased to NYC by proximity + bounding box.
   var GEOCODE = "https://photon.komoot.io/api/?limit=7&lang=en&lat=40.77&lon=-73.96&bbox=-74.30,40.45,-73.65,40.95&q=";
-  function photonLabel(p) {
-    var prim = p.name || [p.housenumber, p.street].filter(Boolean).join(" ") || p.street || p.city || "Result";
+  function photonParts(p) {
+    var name = p.name || [p.housenumber, p.street].filter(Boolean).join(" ") || p.street || p.city || "Result";
+    var bits = [];
+    if (p.name) { var sa = [p.housenumber, p.street].filter(Boolean).join(" "); if (sa) bits.push(sa); }
     var loc = p.district || p.neighbourhood || p.city || "";
-    var bits = [prim];
-    if (loc && loc.toLowerCase() !== prim.toLowerCase()) bits.push(loc);
-    return bits.join(", ");
+    if (loc && loc.toLowerCase() !== name.toLowerCase()) bits.push(loc);
+    if (p.postcode) bits.push(p.postcode);
+    return { name: name, addr: bits.join(", ") };
   }
   var PLAN_KEY = "cm_plan_v3"; // plan items are now {k,id,label,lat,lng,icon}
 
@@ -49,13 +53,13 @@
 
   var state = {
     geo: {}, edProps: {},
-    shadingMode: "opportunity",
+    shadingMode: "none",
     weekStart: null, activeDay: null, activeShift: "AM", plan: {},
     pcts: {},
   };
 
   var map, legend, districtLayer, R, searchMarker = null, searchTimer = null, searchAbort = null;
-  var overlay = { hoods: null, subway: null, polls: null, early: null, groc: null };
+  var overlay = { lines: null, hoods: null, subway: null, polls: null, early: null, groc: null };
   var edCentroid = {};
   var maxBallots = 1, maxCoverage = 1, maxOpportunity = 1;
   var TODAY = startOfDay(new Date());
@@ -85,7 +89,7 @@
 
   function ensureData(name) {
     if (state.geo[name]) return Promise.resolve(state.geo[name]);
-    return fetch(DATA[name]).then(function (r) { return r.json(); }).then(function (g) { state.geo[name] = g; return g; });
+    return fetch(DATA[name] + DV).then(function (r) { return r.json(); }).then(function (g) { state.geo[name] = g; return g; });
   }
 
   // ====================================================================
@@ -135,7 +139,8 @@
   }
   function districtStyle(feature) {
     var mode = state.shadingMode, p = feature.properties, sel = activeEdSet().has(String(p.elect_dist));
-    var st = { color: sel ? "#1f6feb" : "#7e93a8", weight: sel ? 2.8 : 0.4, opacity: 1 };
+    // boundaries are drawn by the separate ED/AD lines layer; here only the selection highlight strokes
+    var st = { color: "#1f6feb", weight: sel ? 2.8 : 0, opacity: 1 };
     if (mode === "none") { st.fill = true; st.fillColor = "#fff"; st.fillOpacity = 0.02; return st; }
     if (mode === "mayor2025") {
       var t = percentile("mayorShare", num(p.top_mayor_rank1_share));
@@ -193,6 +198,20 @@
   // ====================================================================
   //  POINT OVERLAYS  (each marker's popup has an Add-to-shift button)
   // ====================================================================
+  // ED + AD boundary lines (one toggle for both)
+  function toggleLines(on) {
+    if (!on) { if (overlay.lines) map.removeLayer(overlay.lines); return; }
+    if (overlay.lines) { overlay.lines.addTo(map); overlay.lines.bringToFront && overlay.lines.bringToFront(); return; }
+    overlay.lines = L.layerGroup().addTo(map);
+    // ED lines (thin) from the districts we already have
+    if (state.geo.districts) {
+      L.geoJSON(state.geo.districts, { renderer: R, interactive: false, style: { fill: false, color: "#6b7c8f", weight: 0.6, opacity: 0.7 } }).addTo(overlay.lines);
+    }
+    // AD division lines (thick) from the dissolved boundaries
+    ensureData("adlines").then(function (g) {
+      L.geoJSON(g, { renderer: R, interactive: false, style: { fill: false, color: "#2b3f57", weight: 2, opacity: 0.9 } }).addTo(overlay.lines);
+    });
+  }
   function toggleHoods(on) {
     if (!on) { if (overlay.hoods) map.removeLayer(overlay.hoods); return; }
     if (overlay.hoods) { overlay.hoods.addTo(map); return; }
@@ -285,8 +304,10 @@
     var ul = document.getElementById("search-results");
     if (!features.length) { ul.innerHTML = ""; ul.classList.remove("show"); return; }
     ul.innerHTML = features.map(function (f, i) {
-      var c = f.geometry.coordinates, label = photonLabel(f.properties);
-      return '<li data-i="' + i + '" data-lat="' + c[1] + '" data-lng="' + c[0] + '" data-label="' + escAttr(label) + '">' + escapeHtml(label) + "</li>";
+      var c = f.geometry.coordinates, parts = photonParts(f.properties);
+      var label = parts.name + (parts.addr ? " — " + parts.addr : "");
+      return '<li data-i="' + i + '" data-lat="' + c[1] + '" data-lng="' + c[0] + '" data-label="' + escAttr(label) + '">' +
+        '<span class="r-name">' + escapeHtml(parts.name) + '</span><span class="r-addr">' + escapeHtml(parts.addr) + "</span></li>";
     }).join("");
     ul.classList.add("show");
     Array.prototype.forEach.call(ul.querySelectorAll("li"), function (li) {
@@ -299,7 +320,8 @@
     if (searchMarker) map.removeLayer(searchMarker);
     searchMarker = L.marker([lat, lng], { icon: pinIcon("search-pin", "#1f6feb", "📍"), pane: "pane-search" }).addTo(map);
     searchMarker.bindPopup('<div class="popup-title">📍 ' + escapeHtml(label) + "</div>" +
-      addBtnHtml({ k: "pt", id: "pin:" + lat.toFixed(5) + "," + lng.toFixed(5), label: label, lat: lat, lng: lng, icon: "📍" }), { maxWidth: 280 });
+      addBtnHtml({ k: "pt", id: "pin:" + lat.toFixed(5) + "," + lng.toFixed(5), label: label, lat: lat, lng: lng, icon: "📍" }) +
+      '<button class="pin-remove">✕ Remove this pin</button>', { maxWidth: 300 });
     map.setView([lat, lng], 16);
     searchMarker.openPopup();
   }
@@ -397,6 +419,7 @@
     document.addEventListener("click", function (e) { if (!e.target.closest(".search-wrap")) results.classList.remove("show"); });
 
     document.getElementById("shading-mode").addEventListener("change", function (e) { state.shadingMode = e.target.value; refreshDistricts(); });
+    document.getElementById("lyr-lines").addEventListener("change", function (e) { toggleLines(e.target.checked); });
     document.getElementById("lyr-hoods").addEventListener("change", function (e) { toggleHoods(e.target.checked); });
     document.getElementById("lyr-subway").addEventListener("change", function (e) { toggleSubway(e.target.checked); });
     document.getElementById("lyr-polls").addEventListener("change", function (e) { togglePolls(e.target.checked); });
@@ -417,6 +440,8 @@
     map.on("zoomend", updateZoomClass);
     map.on("popupopen", function (e) {
       var root = e.popup.getElement(); if (!root) return;
+      var rem = root.querySelector(".pin-remove");
+      if (rem) rem.addEventListener("click", function () { if (searchMarker) { map.removeLayer(searchMarker); searchMarker = null; } map.closePopup(); });
       var btn = root.querySelector(".plan-add"); if (!btn) return;
       btn.addEventListener("click", function () {
         var item = { k: btn.dataset.k, id: btn.dataset.id, label: btn.dataset.label, lat: +btn.dataset.lat, lng: +btn.dataset.lng, icon: btn.dataset.icon };
@@ -451,8 +476,8 @@
     state.activeDay = isoOf(state.weekStart);
 
     Promise.all([
-      fetch(DATA.districts).then(function (r) { return r.json(); }).catch(function () { return null; }),
-      fetch(DATA.boreslasher).then(function (r) { return r.json(); }).catch(function () { return null; }),
+      fetch(DATA.districts + DV).then(function (r) { return r.json(); }).catch(function () { return null; }),
+      fetch(DATA.boreslasher + DV).then(function (r) { return r.json(); }).catch(function () { return null; }),
     ]).then(function (res) {
       var districts = res[0];
       if (districts && res[1]) {
@@ -472,6 +497,7 @@
         maxOpportunity = districts.features.reduce(function (m, f) { return Math.max(m, districtMetric(f.properties, "opportunity")); }, 0.0001);
         buildPercentiles(districts.features);
         buildDistrictLayer(districts);
+        toggleLines(true); // default: ED + AD boundary lines on
         map.invalidateSize();
         try { map.fitBounds(districtLayer.getBounds(), { padding: [20, 20], animate: false }); } catch (e) {}
       }

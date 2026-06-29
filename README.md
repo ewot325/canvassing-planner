@@ -34,6 +34,8 @@ calculated and how to use the site.
 
 **Map layers** ("Show on the map" checkboxes) — turn these on/off independently:
 
+- **District lines (ED & AD)** (on by default) — thin lines = election districts,
+  thick navy lines = assembly-district divisions. Stay visible under any shading.
 - **Neighborhoods** — labeled neighborhood areas for orientation.
 - **Subway stops** — colored by train line (official MTA colors); station names
   appear when you zoom in.

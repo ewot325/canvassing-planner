@@ -13,7 +13,16 @@
     early: "data/early_voting_sites.geojson",
     groc: "data/supermarkets.geojson",
   };
-  var GEOCODE = "https://geosearch.planninglabs.nyc/v2/autocomplete?text=";
+  // Photon (OpenStreetMap) finds places/POIs ("Hunter College"), not just addresses.
+  // Biased to NYC by proximity + bounding box.
+  var GEOCODE = "https://photon.komoot.io/api/?limit=7&lang=en&lat=40.77&lon=-73.96&bbox=-74.30,40.45,-73.65,40.95&q=";
+  function photonLabel(p) {
+    var prim = p.name || [p.housenumber, p.street].filter(Boolean).join(" ") || p.street || p.city || "Result";
+    var loc = p.district || p.neighbourhood || p.city || "";
+    var bits = [prim];
+    if (loc && loc.toLowerCase() !== prim.toLowerCase()) bits.push(loc);
+    return bits.join(", ");
+  }
   var PLAN_KEY = "cm_plan_v3"; // plan items are now {k,id,label,lat,lng,icon}
 
   var DAY_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -204,9 +213,10 @@
         pointToLayer: function (f, latlng) { return L.circleMarker(latlng, { renderer: R, radius: 4.5, color: "#fff", weight: 1.5, fillColor: trunkColor(f.properties.routes), fillOpacity: 1 }); },
         onEachFeature: function (f, l) {
           var p = ll(f), name = f.properties.name || "Station", routes = f.properties.routes || "";
+          var disp = routes ? name + " " + routes : name;
           l.bindTooltip(escapeHtml(name), { permanent: true, direction: "right", offset: [6, 0], className: "station-label" });
-          l.bindPopup('<div class="popup-title">🚇 ' + escapeHtml(name) + "</div><div class='sub'>" + escapeHtml(routes) + "</div>" +
-            addBtnHtml({ k: "pt", id: ptId("sub", p), label: name, lat: p.lat, lng: p.lng, icon: "🚇" }), { maxWidth: 260 });
+          l.bindPopup('<div class="popup-title">🚇 ' + escapeHtml(name) + "</div><div class='sub'>" + (routes ? "Lines " + escapeHtml(routes) : "Subway") + "</div>" +
+            addBtnHtml({ k: "pt", id: ptId("sub", p), label: disp, lat: p.lat, lng: p.lng, icon: "🚇" }), { maxWidth: 260 });
         },
       }).addTo(map);
     });
@@ -251,9 +261,10 @@
       overlay.groc = L.geoJSON(g, {
         pointToLayer: function (f, latlng) { return L.marker(latlng, { icon: pinIcon("groc-pin", "#2e7d32", "🛒"), pane: "pane-groc" }); },
         onEachFeature: function (f, l) {
-          var p = ll(f), name = f.properties.name || "Supermarket";
-          l.bindPopup('<div class="popup-title">🛒 ' + escapeHtml(name) + "</div><div class='sub'>Supermarket</div>" +
-            addBtnHtml({ k: "pt", id: ptId("groc", p), label: name, lat: p.lat, lng: p.lng, icon: "🛒" }), { maxWidth: 260 });
+          var p = ll(f), name = f.properties.name || "Supermarket", cross = f.properties.cross || "";
+          var disp = cross ? name + " (" + cross + ")" : name;
+          l.bindPopup('<div class="popup-title">🛒 ' + escapeHtml(name) + "</div><div class='sub'>Supermarket" + (cross ? " · " + escapeHtml(cross) : "") + "</div>" +
+            addBtnHtml({ k: "pt", id: ptId("groc", p), label: disp, lat: p.lat, lng: p.lng, icon: "🛒" }), { maxWidth: 280 });
         },
       }).addTo(map);
     });
@@ -274,8 +285,8 @@
     var ul = document.getElementById("search-results");
     if (!features.length) { ul.innerHTML = ""; ul.classList.remove("show"); return; }
     ul.innerHTML = features.map(function (f, i) {
-      var c = f.geometry.coordinates;
-      return '<li data-i="' + i + '" data-lat="' + c[1] + '" data-lng="' + c[0] + '" data-label="' + escAttr(f.properties.label || "") + '">' + escapeHtml(f.properties.label || "") + "</li>";
+      var c = f.geometry.coordinates, label = photonLabel(f.properties);
+      return '<li data-i="' + i + '" data-lat="' + c[1] + '" data-lng="' + c[0] + '" data-label="' + escAttr(label) + '">' + escapeHtml(label) + "</li>";
     }).join("");
     ul.classList.add("show");
     Array.prototype.forEach.call(ul.querySelectorAll("li"), function (li) {
@@ -424,6 +435,16 @@
     legend = L.control({ position: "bottomright" });
     legend.onAdd = function () { return L.DomUtil.create("div", "legend"); };
     legend.addTo(map);
+
+    // info button — navy "i" in the map's top-right corner
+    var infoCtl = L.control({ position: "topright" });
+    infoCtl.onAdd = function () {
+      var b = L.DomUtil.create("button", "info-btn");
+      b.id = "info-btn"; b.type = "button"; b.title = "How this works"; b.setAttribute("aria-label", "How this works"); b.innerHTML = "i";
+      L.DomEvent.disableClickPropagation(b);
+      return b;
+    };
+    infoCtl.addTo(map);
 
     loadPlan();
     state.weekStart = nextMonday();

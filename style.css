@@ -281,14 +281,15 @@ html, body {
 .legend .dotnote { margin-top: 8px; display: flex; align-items: center; gap: 6px; }
 .legend .dotnote .dot { width: 12px; height: 12px; border-radius: 50%; background: #243b53; border: 1px solid #fff; flex: none; }
 
-/* info button + modal */
+/* info button (navy "i", Leaflet control in the map's top-right) + modal */
 .info-btn {
-  position: fixed; top: 12px; left: 50%; transform: translateX(-50%);
-  z-index: 1200; width: 30px; height: 30px; border-radius: 50%;
-  border: 1px solid var(--border); background: var(--panel); color: var(--accent);
-  font-size: 16px; font-weight: 800; cursor: pointer; box-shadow: var(--shadow);
+  width: 30px; height: 30px; border-radius: 50%;
+  border: 2px solid #fff; background: #1e3a5f; color: #fff;
+  font-family: Georgia, "Times New Roman", serif; font-style: italic; font-weight: 700;
+  font-size: 18px; line-height: 1; cursor: pointer; box-shadow: 0 1px 4px rgba(0,0,0,0.35);
+  display: flex; align-items: center; justify-content: center;
 }
-.info-btn:hover { background: var(--accent-soft); }
+.info-btn:hover { background: #16304d; }
 .modal {
   position: fixed; inset: 0; z-index: 1300; background: rgba(20, 32, 48, 0.45);
   display: flex; align-items: center; justify-content: center; padding: 20px;

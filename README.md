@@ -11,8 +11,9 @@ computer — no login, no internet account, no servers to maintain.
 A clean three-block layout: a **Left panel** (search + map controls), the **map**
 in the center, and a **Plan the week** panel on the right.
 
-**Search any address or place** (box at the top-left). Pick a result to drop a 📍
-pin on the map — and you can add that spot to a shift, just like anything else.
+**Search any address or place** (box at the top-left) — including named places like
+"Hunter College" or "Trader Joe's," not just street addresses. Pick a result to drop
+a 📍 pin on the map; you can add that spot to a shift, just like anything else.
 
 **District shading** ("Color the districts by" dropdown) — pick one at a time:
 
@@ -85,10 +86,10 @@ Then visit <http://localhost:8765/index.html> in your browser.
 | `districts.geojson`            | election-district shapes + 2025 turnout, mayoral results, coverage | our scheduling tooling |
 | `bores_lasher_results.geojson` | Bores vs Lasher vote totals by election district (NY-12 Dem primary, 6/23/2026) | [Atlasizer](https://www.atlasizer.com) (Data Mapper by Competitive Advantage Research) |
 | `neighborhoods.geojson`        | Manhattan neighborhood boundaries                               | NYC Open Data — 2020 Neighborhood Tabulation Areas |
-| `subway_stations.geojson`      | subway stations + train lines                                   | NYC Open Data (via `kevin-brown/nyc-open-geojson`) |
+| `subway_stations.geojson`      | current Manhattan subway stations + train lines                 | MTA Subway Stations (data.ny.gov `39hk-dx4f`) |
 | `election_day_poll_sites.geojson` | priority Election Day poll sites + lean/priority/bodies        | campaign list (`NY12 Priority Pollsites…csv`), geocoded via NYC GeoSearch |
 | `early_voting_sites.geojson`   | early voting sites                                              | "GOTV Early Voting Map" (Google My Maps), exported as KML |
-| `supermarkets.geojson`         | NY-12 grocery stores / supermarkets                             | campaign list (`NY-12 Grocery Stores…csv`) |
+| `supermarkets.geojson`         | NY-12 supermarkets, with nearest cross-streets                  | campaign list (`NY-12 Grocery Stores…csv`); cross-streets derived from Manhattan street centerlines |
 
 To refresh the map with newer numbers, replace the relevant file(s) with updated
 exports, keeping the same names and format.

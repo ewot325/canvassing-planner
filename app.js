@@ -4,7 +4,7 @@
 (function () {
   "use strict";
 
-  var DV = "?v=8"; // cache-buster for data files (bump when data changes)
+  var DV = "?v=9"; // cache-buster for data files (bump when data changes)
   var DATA = {
     districts: "data/districts.geojson",
     boreslasher: "data/bores_lasher_results.geojson",
@@ -203,13 +203,13 @@
     if (!on) { if (overlay.lines) map.removeLayer(overlay.lines); return; }
     if (overlay.lines) { overlay.lines.addTo(map); overlay.lines.bringToFront && overlay.lines.bringToFront(); return; }
     overlay.lines = L.layerGroup().addTo(map);
-    // ED lines (thin) from the districts we already have
+    // ED lines (thin but always visible) from the districts we already have
     if (state.geo.districts) {
-      L.geoJSON(state.geo.districts, { renderer: R, interactive: false, style: { fill: false, color: "#6b7c8f", weight: 0.6, opacity: 0.7 } }).addTo(overlay.lines);
+      L.geoJSON(state.geo.districts, { renderer: R, interactive: false, style: { fill: false, color: "#56697d", weight: 1, opacity: 0.9 } }).addTo(overlay.lines);
     }
-    // AD division lines (thick) from the dissolved boundaries
+    // AD division lines (thick, dark navy) from the dissolved boundaries
     ensureData("adlines").then(function (g) {
-      L.geoJSON(g, { renderer: R, interactive: false, style: { fill: false, color: "#2b3f57", weight: 2, opacity: 0.9 } }).addTo(overlay.lines);
+      L.geoJSON(g, { renderer: R, interactive: false, style: { fill: false, color: "#14253a", weight: 2.6, opacity: 1 } }).addTo(overlay.lines);
     });
   }
   function toggleHoods(on) {

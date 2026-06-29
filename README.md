@@ -35,10 +35,11 @@ calculated and how to use the site.
 **Map layers** ("Show on the map" checkboxes) — turn these on/off independently:
 
 - **District lines (ED & AD)** (on by default) — thin lines = election districts,
-  thick navy lines = assembly-district divisions. Stay visible under any shading.
+  thick navy lines = assembly-district divisions. Stay visible under any shading and
+  at every zoom level.
 - **Neighborhoods** — labeled neighborhood areas for orientation.
-- **Subway stops** — colored by train line (official MTA colors); station names
-  appear when you zoom in.
+- **Subway stops** — only the stops inside the district; colored by train line
+  (official MTA colors); station names appear when you zoom in.
 - **Priority Election Day poll sites** — 🗳 pins, colored by partisan lean; hover
   for the neighborhood, priority, and how many bodies the site needs.
 - **Early voting sites** — purple **EV** pins.

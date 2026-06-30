@@ -54,6 +54,19 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             ok, body = False, {"ok": False, "error": str(e)}
         _json_response(self, body, ok)
 
+    def _fellow_availability(self):
+        # Live assigned counts from the local scheduling snapshots (same data the
+        # hosted Netlify function reads over HTTP).
+        try:
+            r = subprocess.run([sys.executable, EXPORT, "--stdout"],
+                               capture_output=True, text=True, timeout=60)
+            if r.returncode == 0 and r.stdout.strip():
+                _json_response(self, json.loads(r.stdout.strip().splitlines()[-1]), True)
+                return
+            _json_response(self, {"ok": False, "error": r.stderr or "no output"}, False)
+        except Exception as e:  # noqa: BLE001
+            _json_response(self, {"ok": False, "error": str(e)}, False)
+
     def _push_meeting(self):
         length = int(self.headers.get("Content-Length", 0) or 0)
         raw = self.rfile.read(length) if length else b"{}"
@@ -80,8 +93,11 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         self.send_error(404, "Not found")
 
     def do_GET(self):
-        if self.path.split("?", 1)[0] == "/api/refresh-fellows":
+        path = self.path.split("?", 1)[0]
+        if path == "/api/refresh-fellows":
             return self._refresh()
+        if path == "/api/fellow-availability":
+            return self._fellow_availability()
         return super().do_GET()
 
 

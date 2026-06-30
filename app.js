@@ -471,11 +471,14 @@
       "👥 " + n + "</span>";
   }
   function loadAvailability(bust) {
-    // bust = true forces a fresh copy (used right after an in-app refresh).
-    var url = DATA.availability + DV + (bust ? "&t=" + Date.now() : "");
-    return fetch(url).then(function (r) { return r.json(); }).then(function (a) {
-      state.avail = a; renderPlan(); renderFellowStatus();
-    }).catch(function () { /* file optional — planner works without it */ });
+    // Prefer the LIVE endpoint (Netlify function / serve.py), which reads the
+    // scheduling site's current published schedule. Fall back to the last
+    // exported static file if no endpoint is available (e.g. a plain server).
+    var t = bust ? "?t=" + Date.now() : "";
+    return fetch("/api/fellow-availability" + t).then(function (r) { if (!r.ok) throw 0; return r.json(); })
+      .catch(function () { return fetch(DATA.availability + DV + (bust ? "&t=" + Date.now() : "")).then(function (r) { return r.json(); }); })
+      .then(function (a) { state.avail = a; renderPlan(); renderFellowStatus(); })
+      .catch(function () { /* optional — planner works without it */ });
   }
   function asOfText(iso) {
     if (!iso) return "";
@@ -492,21 +495,10 @@
     el.textContent = "👥 " + wa.assigned_total + " assigned" + (asof ? " · as of " + asof : "");
   }
   function refreshFellows() {
-    var btn = document.getElementById("fellows-refresh"),
-        status = document.getElementById("fellows-status");
+    var btn = document.getElementById("fellows-refresh");
     if (btn) { btn.disabled = true; btn.textContent = "↻ Updating…"; }
-    fetch("/api/refresh-fellows", { method: "POST" }).then(function (r) {
-      if (!r.ok) throw new Error("refresh failed");
-      return r.json();
-    }).then(function (res) {
-      if (!res.ok) throw new Error("refresh failed");
-      return loadAvailability(true);
-    }).then(function () {
-      if (btn) btn.textContent = "✓ Updated";
-      setTimeout(function () { if (btn) { btn.disabled = false; btn.textContent = "↻ Update assigned counts"; } }, 2000);
-    }).catch(function () {
-      if (btn) { btn.disabled = false; btn.textContent = "↻ Update assigned counts"; }
-      if (status) status.textContent = "Couldn't update — open the map with start_map.command, then try again.";
+    loadAvailability(true).then(function () {
+      if (btn) { btn.textContent = "✓ Updated"; setTimeout(function () { if (btn) { btn.disabled = false; btn.textContent = "↻ Update assigned counts"; } }, 2000); }
     });
   }
   function renderShiftBanner() {

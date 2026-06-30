@@ -1,0 +1,20 @@
+# Netlify config for the Canvassing Planner.
+# The build copies ONLY the site files into dist/ (never model/, serve.py, the
+# census key, etc.), so secrets and dev tooling are never deployed.
+[build]
+  command = "bash build-site.sh"
+  publish = "dist"
+  functions = "netlify/functions"
+
+[build.environment]
+  NODE_VERSION = "20"
+  # SUPABASE_URL isn't secret; the service key is read from the env at runtime
+  # and never written into code or build output.
+  SECRETS_SCAN_OMIT_KEYS = "SUPABASE_URL"
+
+# /api/* -> serverless functions (push-meeting, fellow-availability). The same
+# paths are served by serve.py when running locally via start_map.command.
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/:splat"
+  status = 200

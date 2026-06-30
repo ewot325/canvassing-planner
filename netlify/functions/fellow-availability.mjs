@@ -25,13 +25,13 @@ export async function handler() {
         const r = await fetch(`${SCHED}/${String(rel).replace(/^\//, '')}`);
         if (!r.ok) return null;
         const a = await r.json();
-        const counts = {};
+        const counts = {}, vols = {};
         for (const [k, sh] of Object.entries(a.shifts || {})) {
-          const n = Array.isArray(sh.volunteers) ? sh.volunteers.length : 0;
-          if (n) counts[k] = n;
+          const names = Array.isArray(sh.volunteers) ? sh.volunteers.map((v) => v && v.name).filter(Boolean) : [];
+          if (names.length) { counts[k] = names.length; vols[k] = names; }
         }
         const total = Object.values(counts).reduce((s, x) => s + x, 0);
-        return [ws, { published_at: a.published_at || null, assigned_total: total, shift_counts: counts }];
+        return [ws, { published_at: a.published_at || null, assigned_total: total, shift_counts: counts, shift_volunteers: vols }];
       } catch {
         return null;
       }

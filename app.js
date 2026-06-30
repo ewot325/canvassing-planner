@@ -459,17 +459,42 @@
     if (!state.avail || !state.avail.weeks) return null;
     return state.avail.weeks[isoOf(state.weekStart)] || null;
   }
+  function shiftKey(date, shift) { return dowName(date).toLowerCase() + "_inperson_" + shift.toLowerCase(); }
   function fellowCount(date, shift) {
     var wa = weekAvail(); if (!wa || !wa.shift_counts) return null;
-    var key = dowName(date).toLowerCase() + "_inperson_" + shift.toLowerCase();
-    return wa.shift_counts[key] || 0;
+    return wa.shift_counts[shiftKey(date, shift)] || 0;
+  }
+  function fellowNames(date, shift) {
+    var wa = weekAvail(); if (!wa || !wa.shift_volunteers) return null;
+    return wa.shift_volunteers[shiftKey(date, shift)] || [];
   }
   function fellowBadge(date, shift) {
     var n = fellowCount(date, shift);
     if (n === null) return ""; // no assignment data for this week yet
-    return '<span class="sh-fellows' + (n ? "" : " zero") + '" title="Volunteers assigned to this shift">' +
+    var clickable = n > 0 && fellowNames(date, shift);
+    return '<span class="sh-fellows' + (n ? "" : " zero") + (clickable ? " has-names" : "") + '"' +
+      (clickable ? ' data-iso="' + isoOf(date) + '" data-sh="' + shift + '"' : "") +
+      ' title="' + (clickable ? "Click to see who's assigned" : "Volunteers assigned to this shift") + '">' +
       "👥 " + n + "</span>";
   }
+  // Popover listing the fellows assigned to a shift (names come from the
+  // scheduling site's published schedule).
+  function showFellowsPopover(anchor, iso, sh) {
+    hideFellowsPopover();
+    var names = (weekAvail() && weekAvail().shift_volunteers && weekAvail().shift_volunteers[shiftKey(parseISO(iso), sh)]) || [];
+    var pop = document.createElement("div");
+    pop.className = "fellows-pop"; pop.id = "fellows-pop";
+    pop.innerHTML = "<div class='fp-head'>" + dowName(parseISO(iso)) + " " + sh + " · " + names.length + " assigned</div>" +
+      (names.length ? "<ul>" + names.map(function (n) { return "<li>" + escapeHtml(n) + "</li>"; }).join("") + "</ul>"
+        : "<div class='fp-empty'>No names available.</div>");
+    document.body.appendChild(pop);
+    var r = anchor.getBoundingClientRect();
+    pop.style.top = (r.bottom + 6) + "px";
+    pop.style.left = Math.max(8, Math.min(r.left, window.innerWidth - pop.offsetWidth - 8)) + "px";
+    setTimeout(function () { document.addEventListener("click", onPopOutside, true); }, 0);
+  }
+  function onPopOutside(e) { if (!e.target.closest("#fellows-pop") && !e.target.closest(".sh-fellows")) hideFellowsPopover(); }
+  function hideFellowsPopover() { var p = document.getElementById("fellows-pop"); if (p) p.remove(); document.removeEventListener("click", onPopOutside, true); }
   function loadAvailability(bust) {
     // Prefer the LIVE endpoint (Netlify function / serve.py), which reads the
     // scheduling site's current published schedule. Fall back to the last
@@ -620,6 +645,9 @@
       }).join("");
       return '<div class="day-card"><div class="day-head static"><span class="d-name">' + dowName(d) + " " + prettyDate(d) + "</span></div>" + shifts + "</div>";
     }).join("");
+    Array.prototype.forEach.call(container.querySelectorAll(".sh-fellows.has-names"), function (b) {
+      b.addEventListener("click", function (e) { e.stopPropagation(); showFellowsPopover(b, b.getAttribute("data-iso"), b.getAttribute("data-sh")); });
+    });
     Array.prototype.forEach.call(container.querySelectorAll(".shift-row"), function (row) {
       row.querySelector(".shift-head").addEventListener("click", function () { state.activeDay = row.getAttribute("data-day"); state.activeShift = row.getAttribute("data-shift"); refreshDistricts(); renderPlan(); });
     });
@@ -734,6 +762,7 @@
         } else {
           mh = '<div class="rv-meet"><div class="rv-meet-row">' +
             '<input class="rv-meet-search" type="search" placeholder="Search a meeting place…" data-iso="' + iso + '" data-sh="' + sh + '" />' +
+            '<button class="rv-meet-auto" data-iso="' + iso + '" data-sh="' + sh + '" title="Pick a subway/grocery in the districts (or a central spot)">✨ Auto</button>' +
             '<button class="rv-meet-map" data-iso="' + iso + '" data-sh="' + sh + '">📍 Map</button></div>' +
             '<ul class="rv-meet-results"></ul></div>';
         }
@@ -750,6 +779,12 @@
     Array.prototype.forEach.call(body.querySelectorAll(".rv-meet-clear"), function (b) { b.addEventListener("click", function () { meetReset(b); }); });
     Array.prototype.forEach.call(body.querySelectorAll(".rv-meet-change"), function (b) { b.addEventListener("click", function () { meetReset(b); }); });
     Array.prototype.forEach.call(body.querySelectorAll(".rv-meet-map"), function (b) { b.addEventListener("click", function () { pickMeetOnMap(b.getAttribute("data-iso"), b.getAttribute("data-sh")); }); });
+    Array.prototype.forEach.call(body.querySelectorAll(".rv-meet-auto"), function (b) {
+      b.addEventListener("click", function () {
+        b.disabled = true; b.textContent = "…";
+        autoPickMeeting(b.getAttribute("data-iso"), b.getAttribute("data-sh")).then(function () { renderReview(); renderMeetMarkers(); });
+      });
+    });
     Array.prototype.forEach.call(body.querySelectorAll(".rv-meet-send"), function (b) {
       b.addEventListener("click", function () {
         var status = b.parentNode.querySelector(".rv-send-status");
@@ -848,6 +883,74 @@
         ? "✓ Sent all " + ok + " to the schedule."
         : "Sent " + ok + " of " + jobs.length + (firstErr ? " — " + firstErr : "") + " (is the scheduling project on this Mac?)");
       renderReview();
+    });
+  }
+
+  // ---- auto-pick a meeting point per shift: a subway stop or grocery store
+  // inside the shift's districts, else a central intersection ----
+  function shiftPolyIndex(iso, sh) {
+    var out = [];
+    shiftArr(iso, sh, false).forEach(function (it) {
+      if (it.k !== "ed") return; var f = edFeature(it.id); if (!f || !f.geometry) return;
+      var g = f.geometry, polys = g.type === "MultiPolygon" ? g.coordinates : [g.coordinates];
+      var bb = [1e9, 1e9, -1e9, -1e9];
+      polys.forEach(function (poly) { poly[0].forEach(function (pt) { if (pt[0] < bb[0]) bb[0] = pt[0]; if (pt[1] < bb[1]) bb[1] = pt[1]; if (pt[0] > bb[2]) bb[2] = pt[0]; if (pt[1] > bb[3]) bb[3] = pt[1]; }); });
+      out.push({ bb: bb, polys: polys });
+    });
+    return out;
+  }
+  function inShiftPolys(lng, lat, idx) {
+    for (var k = 0; k < idx.length; k++) { var d = idx[k], b = d.bb; if (lng < b[0] || lng > b[2] || lat < b[1] || lat > b[3]) continue; for (var p = 0; p < d.polys.length; p++) if (pipPoly(lng, lat, d.polys[p])) return true; }
+    return false;
+  }
+  function shiftCenter(iso, sh) {
+    var la = 0, ln = 0, n = 0;
+    shiftArr(iso, sh, false).forEach(function (it) {
+      if (it.k !== "ed") return; var p = state.edProps[it.id], c = edCentroid[String(it.id)];
+      var lat = (p && num(p.representative_latitude)) || (c && c.lat), lng = (p && num(p.representative_longitude)) || (c && c.lng);
+      if (lat && lng) { la += lat; ln += lng; n++; }
+    });
+    return n ? { lat: la / n, lng: ln / n } : null;
+  }
+  function poiMeters(c, lat, lng) { var dy = (lat - c.lat) * 111000, dx = (lng - c.lng) * 84000; return Math.sqrt(dx * dx + dy * dy); }
+  // Best POI for a shift: prefer one inside its districts; otherwise the nearest
+  // within `maxM` meters of the cluster center (EDs are tiny, so stops/stores
+  // usually sit just outside on a bordering street).
+  function bestPOIForShift(geo, idx, center, maxM) {
+    var insideBest = null, nearBest = null;
+    ((geo && geo.features) || []).forEach(function (f) {
+      if (!f.geometry || f.geometry.type !== "Point") return;
+      var lng = f.geometry.coordinates[0], lat = f.geometry.coordinates[1], m = poiMeters(center, lat, lng);
+      if (inShiftPolys(lng, lat, idx)) { if (!insideBest || m < insideBest.m) insideBest = { f: f, lat: lat, lng: lng, m: m }; }
+      else if (m <= maxM && (!nearBest || m < nearBest.m)) nearBest = { f: f, lat: lat, lng: lng, m: m };
+    });
+    return insideBest || nearBest;
+  }
+  function autoPickMeeting(iso, sh) {
+    var idx = shiftPolyIndex(iso, sh), center = shiftCenter(iso, sh);
+    if (!idx.length || !center) return Promise.resolve(false);
+    return Promise.all([ensureData("subway"), ensureData("groc")]).then(function (res) {
+      var sub = bestPOIForShift(res[0], idx, center, 600);
+      if (sub) { setMeet(iso, sh, { label: (sub.f.properties.name || "Subway") + " subway", lat: sub.lat, lng: sub.lng }); return true; }
+      var g = bestPOIForShift(res[1], idx, center, 600);
+      if (g) { var nm = g.f.properties.name || "Supermarket", cr = g.f.properties.cross; setMeet(iso, sh, { label: nm + (cr ? " (" + cr + ")" : ""), lat: g.lat, lng: g.lng }); return true; }
+      return reverseGeocode(center.lat, center.lng).then(function (label) {
+        setMeet(iso, sh, { label: label || "Central point", lat: center.lat, lng: center.lng }); return true;
+      });
+    });
+  }
+  function autoPickAllMeetings() {
+    var status = document.getElementById("review-autopick-status");
+    var jobs = [];
+    weekDays().forEach(function (d) {
+      var iso = isoOf(d);
+      ["AM", "PM"].forEach(function (sh) { if (shiftArr(iso, sh, false).some(function (x) { return x.k === "ed"; }) && !getMeet(iso, sh)) jobs.push({ iso: iso, sh: sh }); });
+    });
+    if (!jobs.length) { if (status) status.textContent = "Every shift with districts already has a meeting point."; return; }
+    if (status) status.textContent = "Picking " + jobs.length + " meeting point" + (jobs.length > 1 ? "s" : "") + "…";
+    Promise.all(jobs.map(function (j) { return autoPickMeeting(j.iso, j.sh); })).then(function () {
+      renderReview(); renderMeetMarkers();
+      if (status) { status.textContent = "Picked " + jobs.length + " — review and adjust as needed."; setTimeout(function () { if (status) status.textContent = ""; }, 6000); }
     });
   }
 
@@ -1048,6 +1151,7 @@
     document.getElementById("review-close").addEventListener("click", closeReview);
     document.getElementById("review-print").addEventListener("click", printPlan);
     document.getElementById("review-copy").addEventListener("click", copyPlan);
+    document.getElementById("review-autopick").addEventListener("click", autoPickAllMeetings);
     document.getElementById("review-sendall").addEventListener("click", sendAllMeetings);
     document.getElementById("plan-clear").addEventListener("click", function () { if (!confirm("Remove everything from this week's plan?")) return; weekDays().forEach(function (d) { delete state.plan[isoOf(d)]; }); savePlan(); refreshDistricts(); renderPlan(); });
 

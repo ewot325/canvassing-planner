@@ -6,7 +6,7 @@
   <title>Canvassing Planner — Locations Map</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
         integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
-  <link rel="stylesheet" href="style.css?v=32" />
+  <link rel="stylesheet" href="style.css?v=34" />
 </head>
 <body>
   <div id="app">
@@ -115,7 +115,11 @@
       <button id="review-close" class="modal-close" aria-label="Close">✕</button>
     </header>
     <div class="review-week" id="review-week"></div>
-    <p class="review-hint">The map is colored by day. Set a meeting point for each shift — search a place or pick it on the map.</p>
+    <p class="review-hint">The map is colored by day. Set a meeting point for each shift — search a place, pick it on the map, or use Auto.</p>
+    <div class="review-auto">
+      <button id="review-autopick">✨ Auto-pick meeting points</button>
+      <span class="review-autopick-status" id="review-autopick-status"></span>
+    </div>
     <div class="review-body" id="review-body"></div>
     <div class="review-send">
       <button id="review-sendall" class="primary">Send all meeting points to schedule</button>
@@ -194,6 +198,6 @@
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
           integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
-  <script src="app.js?v=32"></script>
+  <script src="app.js?v=34"></script>
 </body>
 </html>

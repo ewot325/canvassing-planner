@@ -58,7 +58,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         # Live assigned counts from the local scheduling snapshots (same data the
         # hosted Netlify function reads over HTTP).
         try:
-            r = subprocess.run([sys.executable, EXPORT, "--stdout"],
+            r = subprocess.run([sys.executable, EXPORT, "--stdout", "--with-names"],
                                capture_output=True, text=True, timeout=60)
             if r.returncode == 0 and r.stdout.strip():
                 _json_response(self, json.loads(r.stdout.strip().splitlines()[-1]), True)

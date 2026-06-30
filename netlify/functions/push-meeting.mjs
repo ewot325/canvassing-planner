@@ -1,12 +1,11 @@
 // Netlify Function: write a canvass meeting point to the scheduling site's
-// Supabase as a session_group "meeting spot" for one shift. This is the hosted
+// Supabase `session_meeting_points` table for one shift. This is the hosted
 // equivalent of push_meeting_point.py (which serve.py runs locally).
 //
-// Idempotent: upserts a single group tagged "Canvass meeting point" per
-// (week_id, shift_key); never touches groups staff created themselves.
+// Upserts one row per (week_id, shift_key); re-sending updates it. The
+// scheduling site shows it as the session's meeting spot (staff + volunteers).
 // Reads SUPABASE_URL + SUPABASE_SERVICE_KEY from the Netlify environment.
 
-const GROUP_NAME = 'Canvass meeting point';
 const JSON_HEADERS = { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' };
 
 function json(statusCode, body) {
@@ -54,22 +53,9 @@ export async function handler(event) {
   }
   const week_id = String(wk.data[0].id);
 
-  const row = {
-    week_id, shift_key, name: GROUP_NAME,
-    location_lat: lat, location_long: lng, location_note: label,
-    position: 0, updated_at: new Date().toISOString(),
-  };
-  const ex = await sb('GET', 'session_groups', {
-    params: { week_id: `eq.${week_id}`, shift_key: `eq.${shift_key}`, name: `eq.${GROUP_NAME}`, select: 'id', limit: '1' },
-  });
-  if (ex.ok && Array.isArray(ex.data) && ex.data.length) {
-    const id = ex.data[0].id;
-    const up = await sb('PATCH', 'session_groups', { params: { id: `eq.${id}` }, body: row });
-    if (!up.ok) return json(502, { ok: false, error: `update failed (${up.status})` });
-    return json(200, { ok: true, action: 'updated', group_id: id, week_id, shift_key, label });
-  }
-  const ins = await sb('POST', 'session_groups', { body: row, prefer: 'return=representation' });
-  if (!ins.ok) return json(502, { ok: false, error: `insert failed (${ins.status})` });
-  const gid = Array.isArray(ins.data) && ins.data[0] ? ins.data[0].id : null;
-  return json(201, { ok: true, action: 'created', group_id: gid, week_id, shift_key, label });
+  // Upsert one row per (week_id, shift_key) — PostgREST merges on the PK.
+  const row = { week_id, shift_key, label, lat, long: lng, updated_at: new Date().toISOString() };
+  const up = await sb('POST', 'session_meeting_points', { body: row, prefer: 'resolution=merge-duplicates,return=representation' });
+  if (!up.ok) return json(502, { ok: false, error: `save failed (${up.status}): ${typeof up.data === 'string' ? up.data : JSON.stringify(up.data)}` });
+  return json(200, { ok: true, week_id, shift_key, label });
 }

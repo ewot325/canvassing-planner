@@ -1,6 +1,11 @@
 .DS_Store
 *.log
-model/data/.census_key
+__pycache__/
+*.pyc
+
+# Confidential campaign data — never commit (polls, targeting model inputs/outputs,
+# census key). Kept out of the public repo.
+model/data/
 
 # Local Netlify folder
 .netlify

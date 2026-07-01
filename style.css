@@ -32,9 +32,13 @@ html, body {
   flex-direction: column;
   overflow: hidden;
 }
-#panel-left { border-right: 1px solid var(--border); overflow-y: auto; }
-/* keep cards at natural height and let the whole panel scroll (don't squish/overlap) */
+#panel-left { border-right: 1px solid var(--border); overflow: hidden; }
+/* header (top) and the info-cards (weather + events, bottom) stay pinned; only
+   the middle region scrolls, so the events card is never hidden by the scroll. */
 #panel-left > * { flex-shrink: 0; }
+/* higher specificity than "#panel-left > *" so this one actually shrinks/scrolls */
+#panel-left > .panel-scroll { flex: 0 1 auto; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; }
+.panel-scroll > * { flex-shrink: 0; }
 #panel-right { border-left: 1px solid var(--border); width: 340px; min-width: 340px; }
 
 .panel-header { padding: 14px 18px 12px; border-bottom: 1px solid var(--border); }
@@ -147,7 +151,7 @@ html, body {
 @keyframes edHi { 0%, 100% { stroke-opacity: 1; } 50% { stroke-opacity: 0.3; } }
 
 /* info cards (weather, calendar, …) */
-.info-cards { padding: 12px 14px 0; display: flex; flex-direction: column; gap: 10px; }
+.info-cards { padding: 12px 14px; display: flex; flex-direction: column; gap: 10px; border-top: 1px solid var(--border); }
 .info-card { border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; background: var(--panel); }
 .ic-title { font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 6px; }
 .ic-muted { font-size: 12px; color: var(--muted); }

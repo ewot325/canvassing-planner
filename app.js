@@ -495,6 +495,19 @@
   }
   function onPopOutside(e) { if (!e.target.closest("#fellows-pop") && !e.target.closest(".sh-fellows")) hideFellowsPopover(); }
   function hideFellowsPopover() { var p = document.getElementById("fellows-pop"); if (p) p.remove(); document.removeEventListener("click", onPopOutside, true); }
+  // Info popover for the Top-targets "i" button (replaces the always-on note).
+  function showRecInfo(btn) {
+    var pop = document.createElement("div");
+    pop.className = "rec-info-pop"; pop.id = "rec-info-pop";
+    pop.innerHTML = "Ranked by your goal; districts you've already canvassed are weighted down (not removed). Click a district to highlight it; “Add” puts it in the selected shift. <strong>Auto-plan</strong> fills empty shifts with nearby clusters of top districts.";
+    document.body.appendChild(pop);
+    var r = btn.getBoundingClientRect();
+    pop.style.top = (r.bottom + 6) + "px";
+    pop.style.left = Math.max(8, Math.min(r.left, window.innerWidth - pop.offsetWidth - 10)) + "px";
+    setTimeout(function () { document.addEventListener("click", onRecInfoOutside); }, 0);
+  }
+  function onRecInfoOutside(e) { if (!e.target.closest("#rec-info-pop")) hideRecInfo(); }
+  function hideRecInfo() { var p = document.getElementById("rec-info-pop"); if (p) p.remove(); document.removeEventListener("click", onRecInfoOutside); }
   function loadAvailability(bust) {
     // Prefer the LIVE endpoint (Netlify function / serve.py), which reads the
     // scheduling site's current published schedule. Fall back to the last
@@ -1144,6 +1157,7 @@
     document.getElementById("week-prev").addEventListener("click", function () { state.weekStart = addDays(state.weekStart, -7); state.activeDay = isoOf(state.weekStart); refreshDistricts(); renderPlan(); loadEvents(); });
     document.getElementById("week-next").addEventListener("click", function () { state.weekStart = addDays(state.weekStart, 7); state.activeDay = isoOf(state.weekStart); refreshDistricts(); renderPlan(); loadEvents(); });
     document.getElementById("rec-mode").addEventListener("change", function (e) { state.recMode = e.target.value; renderRecommendations(); });
+    document.getElementById("rec-info").addEventListener("click", function (e) { e.stopPropagation(); if (document.getElementById("rec-info-pop")) hideRecInfo(); else showRecInfo(e.currentTarget); });
     document.getElementById("rec-autoplan").addEventListener("click", autoPlanWeek);
     document.getElementById("week-overview").addEventListener("click", toggleWeekOverview);
     document.getElementById("fellows-refresh").addEventListener("click", refreshFellows);

@@ -6,21 +6,20 @@
   <title>Canvassing Planner — Locations Map</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
         integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
-  <link rel="stylesheet" href="style.css?v=36" />
+  <link rel="stylesheet" href="style.css?v=38" />
 </head>
 <body>
+  <!-- Floating search over the top of the map (keeps the left panel compact) -->
+  <div class="search-wrap floating">
+    <input type="search" id="search" placeholder="🔍  Search any address or place…" autocomplete="off" />
+    <ul id="search-results" class="search-results"></ul>
+  </div>
   <div id="app">
     <!-- ============ LEFT BLOCK: LOCATIONS ============ -->
     <aside id="panel-left" class="panel">
       <header class="panel-header">
         <h1>Canvassing Planner</h1>
       </header>
-
-      <div class="panel-scroll">
-      <div class="search-wrap">
-        <input type="search" id="search" placeholder="🔍  Search any address or place…" autocomplete="off" />
-        <ul id="search-results" class="search-results"></ul>
-      </div>
 
       <div class="controls">
         <label class="field">
@@ -53,6 +52,7 @@
       <div class="rec-card">
         <div class="rec-head">
           <span class="rec-title">🎯 Top targets</span>
+          <button id="rec-info" class="rec-info" type="button" title="About Top targets" aria-label="About Top targets">i</button>
           <select id="rec-mode" class="rec-mode" title="What to optimize for">
             <option value="persuasion">Persuasion</option>
             <option value="gotv">Turnout (GOTV)</option>
@@ -61,8 +61,6 @@
         <ul class="rec-list" id="rec-list"></ul>
         <button id="rec-autoplan" class="rec-autoplan" title="Fill every empty shift this week with a nearby cluster of top districts">Auto-plan the week</button>
         <div class="rec-autoplan-msg" id="rec-autoplan-msg"></div>
-        <p class="rec-note">Ranked by your goal; districts you've already canvassed are weighted down (not removed). Click a district to highlight it; “Add” puts it in the selected shift. <strong>Auto-plan</strong> fills empty shifts with nearby clusters.</p>
-      </div>
       </div>
 
       <div class="info-cards">
@@ -200,6 +198,6 @@
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
           integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
-  <script src="app.js?v=36"></script>
+  <script src="app.js?v=38"></script>
 </body>
 </html>

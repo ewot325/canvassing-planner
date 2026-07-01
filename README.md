@@ -96,8 +96,8 @@ Then visit <http://localhost:8765/index.html> in your browser.
 
 | file                           | what it is                                                       | where it came from |
 | ------------------------------ | --------------------------------------------------------------- | ------------------ |
-| `locations.json`               | every canvassed site: coordinates, dates, volunteers            | our scheduling tooling |
-| `summary.json`                 | the headline totals shown at the top of the sidebar             | our scheduling tooling |
+| `locations.json`               | every canvassed site: coordinates, dates, and aggregate canvassing intensity (person-days) | our scheduling tooling |
+| `summary.json`                 | aggregate canvassing totals (person-days, top locations)        | our scheduling tooling |
 | `districts.geojson`            | election-district shapes + 2025 turnout, mayoral results, coverage | our scheduling tooling |
 | `bores_lasher_results.geojson` | Bores vs Lasher vote totals by election district (NY-12 Dem primary, 6/23/2026) | [Atlasizer](https://www.atlasizer.com) (Data Mapper by Competitive Advantage Research) |
 | `neighborhoods.geojson`        | Manhattan neighborhood boundaries                               | NYC Open Data — 2020 Neighborhood Tabulation Areas |
@@ -115,8 +115,13 @@ exports, keeping the same names and format.
 
 ## Privacy note
 
-The data includes volunteer names, so keep this project **private**. It is not
-meant to be published publicly.
+This repository is public and contains **no personal data**. Earlier internal
+versions of `locations.json` listed the individual volunteers who canvassed each
+site; those names have been removed — only the locations, dates, and aggregate
+canvassing intensity remain. Confidential campaign inputs (the polling crosstabs
+and targeting-model working files) are kept out of the repository entirely: they
+live in a git-ignored `model/data/` folder on the maintainer's machine and are
+never committed.
 
 ## What's inside
 

@@ -272,8 +272,9 @@ html, body {
 .rec-card > .rec-head, .rec-card > .rec-autoplan, .rec-card > .rec-autoplan-msg { flex-shrink: 0; }
 .rec-head { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-bottom: 1px solid var(--border); background: var(--panel-2); }
 .rec-head .rec-title { flex: 1; font-size: 13px; font-weight: 700; }
-.rec-head .rec-info { width: 18px; height: 18px; flex: none; border-radius: 50%; border: 1px solid var(--border); background: var(--panel); color: var(--muted); font-size: 11px; font-style: italic; font-weight: 700; line-height: 1; cursor: pointer; display: flex; align-items: center; justify-content: center; }
-.rec-head .rec-info:hover { background: var(--panel); color: var(--accent); border-color: var(--accent); }
+/* matches the navy "i" info button in the map's top-right corner */
+.rec-head .rec-info { width: 22px; height: 22px; flex: none; border-radius: 50%; border: 2px solid #fff; background: #1e3a5f; color: #fff; font-family: Georgia, "Times New Roman", serif; font-style: italic; font-weight: 700; font-size: 14px; line-height: 1; cursor: pointer; box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35); display: flex; align-items: center; justify-content: center; }
+.rec-head .rec-info:hover { background: #16304d; }
 .rec-info-pop { position: fixed; z-index: 1400; max-width: 260px; background: var(--panel); border: 1px solid var(--border); border-radius: 10px; box-shadow: 0 6px 20px rgba(20, 32, 48, 0.22); padding: 10px 12px; font-size: 12px; line-height: 1.45; color: var(--text); }
 .rec-head .rec-mode { font-size: 12px; padding: 3px 6px; border: 1px solid var(--border); border-radius: 7px; background: var(--panel); color: inherit; }
 .rec-list { list-style: none; margin: 0; padding: 4px; max-height: 168px; flex: 0 1 auto; min-height: 0; overflow-y: auto; }
